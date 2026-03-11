@@ -1,0 +1,17 @@
+{
+  "version": "0.1.0",
+  "status": "draft",
+  "date": "2026-03-11",
+  "layers": {
+    "identity": "0.1.0",
+    "discovery": "0.1.0",
+    "connect": "0.1.0",
+    "exchange": "0.1.0",
+    "stream": "0.1.0"
+  },
+  "compatibility": {
+    "prowlrbot": ">=0.1.0",
+    "mcp_bridge": true,
+    "a2a_bridge": true
+  }
+}
