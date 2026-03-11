@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify spec files exist
+        run: |
+          echo "Checking required spec documents..."
+          for doc in ROAR-SPEC ROAR-IDENTITY ROAR-DISCOVERY ROAR-CONNECT ROAR-EXCHANGE ROAR-STREAM; do
+            if [ ! -f "spec/$doc.md" ]; then
+              echo "MISSING: spec/$doc.md"
+              exit 1
+            fi
+            echo "  Found spec/$doc.md"
+          done
+          echo "All spec documents present."
+
+      - name: Verify VERSION.json
+        run: |
+          python3 -c "
+import json
+v = json.load(open('spec/VERSION.json'))
+assert 'version' in v, 'Missing version field'
+assert 'layers' in v, 'Missing layers field'
+print(f'Spec version: {v[\"version\"]}')
+print(f'Layers: {list(v[\"layers\"].keys())}')
+"
+
+      - name: Check for broken internal links
+        run: |
+          echo "Checking for broken cross-references..."
+          for file in spec/*.md; do
+            grep -oP '\[.*?\]\((ROAR-\w+\.md)\)' "$file" 2>/dev/null | while read -r match; do
+              target=$(echo "$match" | grep -oP 'ROAR-\w+\.md')
+              if [ ! -f "spec/$target" ]; then
+                echo "  BROKEN LINK: $target referenced in $file"
+                exit 1
+              fi
+            done
+          done
+          echo "All internal links valid."
