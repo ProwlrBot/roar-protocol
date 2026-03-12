@@ -1,29 +1,68 @@
 # ROAR TypeScript Examples
 
-> **Status: Pending SDK alignment.**
-
-TypeScript examples will be added here once the TS SDK field names and enum values are aligned to the Python reference implementation.
-
-See [SDK-ROADMAP.md](../../SDK-ROADMAP.md) — specifically the "Critical: Python / TypeScript Type Divergence" section — for the open tasks.
+Minimal examples showing ROAR agent communication using the TypeScript SDK.
 
 ---
 
-## What Will Go Here
+## Prerequisites
 
-Mirror of the Python examples:
+The TypeScript examples import directly from the TS SDK source tree. No separate build step required when using `ts-node` or Bun:
 
-- `echo_server.ts` — minimal ROAR server using Node.js / Bun
-- `client.ts` — ROARClient sending a DELEGATE to the echo server or ProwlrBot
+```bash
+# From the prowlrbot repo root, build the TS SDK first:
+cd packages/roar-sdk-ts && npm ci && npm run build && cd ../..
+
+# OR use ts-node/Bun directly (no build needed):
+npm install -g ts-node   # once
+# or: curl -fsSL https://bun.sh/install | bash
+```
 
 ---
 
-## Help Wanted
+## Run the Echo Server
 
-If you want to contribute the TypeScript examples:
+```bash
+# Terminal 1 — start the server
+npx ts-node examples/ts/echo_server.ts
 
-1. Align `MessageIntent`, `AgentIdentity`, `ROARMessage`, `StreamEventType` in the TS SDK to match the canonical Python types (see SDK-ROADMAP.md)
-2. Implement HTTP transport in the TS SDK
-3. Write `echo_server.ts` and `client.ts` following the same pattern as the Python examples
-4. Verify the golden signature fixture: `tests/conformance/golden/signature.json` must produce the same HMAC value in TypeScript
+# Expected output:
+# Server DID: did:roar:agent:echo-server-xxxxxxxx
+# ROAR echo server listening on http://127.0.0.1:8089
+```
 
-Open a PR and reference this file — we'll merge it.
+## Run the Client
+
+```bash
+# Terminal 2 — send a DELEGATE message
+npx ts-node examples/ts/client.ts
+
+# Expected output:
+# Client DID: did:roar:agent:ts-client-xxxxxxxx
+# → Sending DELEGATE message:
+#   id:      msg_xxxxxxxxxxxx
+#   intent:  delegate
+#   payload: { task: 'reflect this payload back to me', priority: 'low' }
+#   signed:  true
+# ← Response received:
+#   intent:  respond
+#   payload: { echo: { task: '...', priority: 'low' }, status: 'ok' }
+#   sig ok:  true
+# ROAR round-trip complete.
+```
+
+---
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `echo_server.ts` | Minimal HTTP server receiving ROAR messages |
+| `client.ts` | Creates an identity, signs a DELEGATE, sends it, verifies the response |
+
+---
+
+## See Also
+
+- [Python examples](../python/) — same flow in Python
+- [SDK-ROADMAP.md](../../SDK-ROADMAP.md) — open tasks and divergence tracker
+- [ROAR-SPEC.md](../../ROAR-SPEC.md) — full protocol specification
