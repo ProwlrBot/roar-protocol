@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ProwlrBot/roar-protocol/spec/schemas/roar-message.json",
+  "title": "ROARMessage",
+  "description": "ROAR Layer 4: Unified message format. One type for all agent communication, differentiated by intent.",
+  "type": "object",
+  "required": ["roar", "id", "from", "to", "intent", "payload", "timestamp"],
+  "properties": {
+    "roar": {
+      "type": "string",
+      "description": "ROAR protocol version",
+      "enum": ["1.0"],
+      "examples": ["1.0"]
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique message identifier. Format: msg_<10-char hex>",
+      "pattern": "^msg_[a-f0-9]{10}$",
+      "examples": ["msg_a1b2c3d4e5"]
+    },
+    "from": {
+      "$ref": "agent-identity.json",
+      "description": "Full identity of the sender"
+    },
+    "to": {
+      "$ref": "agent-identity.json",
+      "description": "Full identity of the intended receiver"
+    },
+    "intent": {
+      "type": "string",
+      "enum": ["execute", "delegate", "update", "ask", "respond", "notify", "discover"],
+      "description": "What the sender wants the receiver to do. Never use custom values — map to the closest intent.",
+      "examples": ["delegate"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Message content. Structure depends on intent — see spec/04-exchange.md for intent-specific payload shapes.",
+      "examples": [
+        {"task": "implement UserDashboard", "priority": "high"},
+        {"action": "run_command", "params": {"command": "pytest tests/ -v"}},
+        {"status": "ok", "review": "LGTM"}
+      ]
+    },
+    "context": {
+      "type": "object",
+      "description": "Session context and metadata. Optional but recommended for tracing.",
+      "properties": {
+        "session_id": {"type": "string"},
+        "in_reply_to": {"type": "string", "description": "ID of the message this is responding to"},
+        "protocol": {"type": "string", "description": "Original protocol if this message was adapted (e.g., 'a2a', 'mcp')"}
+      },
+      "additionalProperties": true,
+      "examples": [{"session_id": "sess_abc123", "in_reply_to": "msg_a1b2c3d4e5"}]
+    },
+    "auth": {
+      "type": "object",
+      "description": "Authentication. Set by .sign(), verified by .verify(). Absent on unsigned messages.",
+      "properties": {
+        "signature": {
+          "type": "string",
+          "description": "HMAC-SHA256 signature. Format: hmac-sha256:<hex>",
+          "pattern": "^hmac-sha256:[a-f0-9]{64}$"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Unix timestamp when signature was created. Used for replay protection."
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {"signature": "hmac-sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2", "timestamp": 1710000000.0}
+      ]
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix timestamp (seconds since epoch, float) when the message was created.",
+      "examples": [1710000000.0]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "roar": "1.0",
+      "id": "msg_a1b2c3d4e5",
+      "from": {
+        "did": "did:roar:agent:architect-f5e6d7c8a9b0",
+        "display_name": "architect",
+        "agent_type": "agent",
+        "capabilities": ["python", "api"],
+        "version": "1.0",
+        "public_key": null
+      },
+      "to": {
+        "did": "did:roar:agent:frontend-k1l2m3n4o5p6",
+        "display_name": "frontend",
+        "agent_type": "agent",
+        "capabilities": ["react", "typescript"],
+        "version": "1.0",
+        "public_key": null
+      },
+      "intent": "delegate",
+      "payload": {"task": "implement UserDashboard component", "priority": "high"},
+      "context": {"session_id": "sess_abc123"},
+      "auth": {"signature": "hmac-sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2", "timestamp": 1710000000.0},
+      "timestamp": 1710000000.0
+    }
+  ]
+}

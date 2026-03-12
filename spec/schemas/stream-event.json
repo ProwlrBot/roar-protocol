@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ProwlrBot/roar-protocol/spec/schemas/stream-event.json",
+  "title": "StreamEvent",
+  "description": "ROAR Layer 5: Real-time streaming event. Published to EventBus, delivered via SSE or WebSocket.",
+  "type": "object",
+  "required": ["type", "timestamp"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "tool_call",
+        "mcp_request",
+        "reasoning",
+        "task_update",
+        "monitor_alert",
+        "agent_status",
+        "checkpoint",
+        "world_update"
+      ],
+      "description": "Event category. Determines the shape of `data`.",
+      "examples": ["task_update"]
+    },
+    "source": {
+      "type": "string",
+      "description": "DID of the agent that emitted this event. Always attributable.",
+      "pattern": "^did:roar:",
+      "examples": ["did:roar:agent:architect-a1b2c3d4e5f6a1b2"]
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Session this event belongs to. Empty string if global.",
+      "examples": ["sess_abc123"]
+    },
+    "data": {
+      "type": "object",
+      "description": "Event payload. Shape varies by type — see spec/05-stream.md.",
+      "examples": [
+        {"task_id": "task_xyz", "status": "completed", "summary": "Implemented REST API"},
+        {"tool": "read_file", "args": {"path": "src/main.py"}, "result_preview": "# main"},
+        {"status": "idle", "agent": "did:roar:agent:frontend-abc123"}
+      ]
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Unix timestamp (float) when this event was emitted.",
+      "examples": [1710000000.0]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "type": "task_update",
+      "source": "did:roar:agent:architect-a1b2c3d4e5f6a1b2",
+      "session_id": "sess_abc123",
+      "data": {
+        "task_id": "task_xyz",
+        "status": "completed",
+        "summary": "Implemented REST API endpoints"
+      },
+      "timestamp": 1710000000.0
+    },
+    {
+      "type": "agent_status",
+      "source": "did:roar:agent:frontend-k1l2m3n4o5p6",
+      "session_id": "",
+      "data": {"status": "busy", "task": "Implementing UserDashboard"},
+      "timestamp": 1710000001.5
+    }
+  ]
+}

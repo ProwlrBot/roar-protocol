@@ -1,17 +1,40 @@
 {
-  "version": "0.1.0",
-  "status": "draft",
-  "date": "2026-03-11",
+  "spec_version": "0.2.0",
+  "status": "active",
+  "date": "2026-03-12",
   "layers": {
-    "identity": "0.1.0",
-    "discovery": "0.1.0",
-    "connect": "0.1.0",
-    "exchange": "0.1.0",
-    "stream": "0.1.0"
+    "identity": "0.2.0",
+    "discovery": "0.2.0",
+    "connect": "0.2.0",
+    "exchange": "0.2.0",
+    "stream": "0.2.0"
   },
   "compatibility": {
     "prowlrbot": ">=0.1.0",
+    "python_sdk_min_version": "0.1.0",
+    "ts_sdk_min_version": null,
     "mcp_bridge": true,
-    "a2a_bridge": true
+    "a2a_bridge": true,
+    "acp_bridge": false
+  },
+  "sdk_status": {
+    "python": {
+      "overall": "70%",
+      "identity": "complete",
+      "discovery": "complete (in-memory), partial (federated)",
+      "connect": "complete (HTTP, WS, stdio)",
+      "exchange": "complete",
+      "stream": "complete (EventBus, SSE)",
+      "notes": "Ed25519 signing defined but not enforced end-to-end. ACP adapter is a stub."
+    },
+    "typescript": {
+      "overall": "30%",
+      "identity": "partial — field names diverge (agent_id vs did)",
+      "discovery": "not implemented",
+      "connect": "not implemented",
+      "exchange": "partial — enum values and field names diverge from spec",
+      "stream": "partial — StreamEventType enum values diverge",
+      "notes": "See SDK-ROADMAP.md for the full divergence table and open tasks."
+    }
   }
 }
