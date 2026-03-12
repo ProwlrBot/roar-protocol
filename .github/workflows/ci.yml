@@ -70,8 +70,20 @@ print('Layers:', list(v['layers'].keys()))
       - name: Run conformance tests
         run: python3 tests/validate_golden.py
 
-      - name: Verify signature fixture is stable
+      - name: Verify signature fixture is stable (Python)
         run: python3 tests/check_signature.py
 
       - name: Verify SDK version matches spec version
         run: python3 tests/check_versions.py
+
+  conformance-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify signature fixture is stable (TypeScript/Node)
+        run: node tests/check_signature_ts.mjs
