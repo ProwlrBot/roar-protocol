@@ -5,7 +5,7 @@
 If you discover a security vulnerability in any ProwlrBot repository, please report it responsibly.
 
 1. **Do not** open a public issue for security vulnerabilities
-2. Open a [GitHub issue](https://github.com/ProwlrBot/prowlrbot/issues) with the `security` label on the **main repo**
+2. Report vulnerabilities via [GitHub Security Advisories](https://github.com/ProwlrBot/prowlrbot/security/advisories/new). Do not use public issues.
 3. Include: description, reproduction steps, severity estimate (CVSS if possible)
 
 ## Response Timeline

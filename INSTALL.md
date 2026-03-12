@@ -7,7 +7,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/mcpcentral/prowlrbot.git
+git clone https://github.com/ProwlrBot/prowlrbot.git
 cd prowlrbot
 pip install -e .
 ```
@@ -69,7 +69,7 @@ ProwlrHub uses MCP transport with ROAR identity under the hood. To connect Claud
 claude mcp add prowlr-hub -s local -e PYTHONPATH="$(pwd)/src" -- python3 -m prowlrbot.hub
 ```
 
-See [ProwlrBot INSTALL.md](https://github.com/mcpcentral/prowlrbot/blob/main/INSTALL.md) for the full war room setup guide.
+See [ProwlrBot INSTALL.md](https://github.com/ProwlrBot/prowlrbot/blob/main/INSTALL.md) for the full war room setup guide.
 
 ---
 
@@ -91,12 +91,12 @@ from prowlrbot.protocols.sdk import ROARRouter
 from prowlrbot.protocols.sdk import EventBus
 ```
 
-See the [SDK documentation](https://github.com/mcpcentral/prowlrbot/tree/main/src/prowlrbot/protocols/sdk) for detailed usage.
+See the [SDK documentation](https://github.com/ProwlrBot/prowlrbot/tree/main/src/prowlrbot/protocols/sdk) for detailed usage.
 
 ---
 
 ## Links
 
-- [ROAR Protocol Specification](https://github.com/mcpcentral/roar-protocol)
-- [ProwlrBot Platform](https://github.com/mcpcentral/prowlrbot)
-- [Documentation](https://mcpcentral.github.io/prowlr-docs)
+- [ROAR Protocol Specification](https://github.com/ProwlrBot/roar-protocol)
+- [ProwlrBot Platform](https://github.com/ProwlrBot/prowlrbot)
+- [Documentation](https://ProwlrBot.github.io/prowlr-docs)
