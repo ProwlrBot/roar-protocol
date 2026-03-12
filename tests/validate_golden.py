@@ -14,7 +14,7 @@ from pathlib import Path
 GOLDEN = Path(__file__).parent / "conformance" / "golden"
 
 try:
-    from prowlrbot.protocols.roar import (
+    from roar_sdk import (
         AgentIdentity,
         ROARMessage,
         StreamEvent,
@@ -22,8 +22,8 @@ try:
         StreamEventType,
     )
 except ImportError:
-    print("ERROR: prowlrbot not installed.")
-    print("  Install: pip install -e '.[dev]'  (from the prowlrbot repo)")
+    print("ERROR: roar-sdk not installed.")
+    print("  Install: pip install -e ./python  (from the roar-protocol repo root)")
     sys.exit(1)
 
 DID_PREFIX = "did:roar:"

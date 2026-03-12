@@ -32,10 +32,10 @@ jobs:
           python3 -c "
 import json
 v = json.load(open('spec/VERSION.json'))
-assert 'version' in v, 'Missing version field'
+assert 'spec_version' in v, 'Missing spec_version field'
 assert 'layers' in v, 'Missing layers field'
-print(f'Spec version: {v[\"version\"]}')
-print(f'Layers: {list(v[\"layers\"].keys())}')
+print('Spec version:', v['spec_version'])
+print('Layers:', list(v['layers'].keys()))
 "
 
       - name: Check for broken internal links
@@ -51,3 +51,27 @@ print(f'Layers: {list(v[\"layers\"].keys())}')
             done
           done
           echo "All internal links valid."
+
+  conformance:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install roar-sdk from this repo
+        run: pip install -e ./python
+
+      - name: Run conformance tests
+        run: python3 tests/validate_golden.py
+
+      - name: Verify signature fixture is stable
+        run: python3 tests/check_signature.py
+
+      - name: Verify SDK version matches spec version
+        run: python3 tests/check_versions.py

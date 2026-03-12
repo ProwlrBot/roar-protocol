@@ -17,15 +17,15 @@ Usage:
 import asyncio
 import logging
 
-# ── Imports from ProwlrBot's ROAR reference implementation ──────────────────
-from prowlrbot.protocols.roar import (
+# ── Imports from the standalone roar-sdk package ────────────────────────────
+from roar_sdk import (
     AgentIdentity,
     MessageIntent,
     ROARMessage,
     StreamEvent,
     StreamEventType,
+    ROARServer,
 )
-from prowlrbot.protocols.sdk.server import ROARServer
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger("echo-server")
@@ -77,44 +77,8 @@ async def handle_delegate(msg: ROARMessage) -> ROARMessage:
     return response
 
 
-# ── Step 4: Expose the handler over HTTP using FastAPI ───────────────────────
-def create_app():
-    """Create a FastAPI app that routes POST /roar/message to the server."""
-    try:
-        from fastapi import FastAPI, Request
-        from fastapi.responses import JSONResponse
-    except ImportError:
-        raise ImportError("Install fastapi: pip install fastapi uvicorn")
-
-    app = FastAPI(title="ROAR Echo Server")
-
-    @app.post("/roar/message")
-    async def receive_message(request: Request):
-        body = await request.json()
-        msg = ROARMessage(**body)
-
-        # Verify HMAC signature (disable age check for demo)
-        if msg.auth and not msg.verify("roar-example-shared-secret", max_age_seconds=0):
-            return JSONResponse({"error": "invalid_signature"}, status_code=401)
-
-        response = await server.handle_message(msg)
-        return response.model_dump(by_alias=True)
-
-    @app.get("/roar/agents")
-    async def list_agents():
-        card = server.get_card()
-        return {"agents": [card.model_dump()]}
-
-    return app
-
-
+# ── Step 4: Start the built-in HTTP server ──────────────────────────────────
 if __name__ == "__main__":
-    try:
-        import uvicorn
-    except ImportError:
-        print("Install uvicorn: pip install uvicorn")
-        raise
-
     log.info("Starting ROAR echo server on http://127.0.0.1:8089")
     log.info("Endpoints:")
     log.info("  POST /roar/message  — receive a ROARMessage")
@@ -122,4 +86,6 @@ if __name__ == "__main__":
     log.info("")
     log.info("Now run: python3 examples/python/client.py")
 
-    uvicorn.run(create_app(), host="127.0.0.1", port=8089, log_level="warning")
+    # ROARServer.serve() wires FastAPI + uvicorn automatically.
+    # Requires: pip install 'roar-sdk[server]'
+    server.serve()

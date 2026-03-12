@@ -25,14 +25,14 @@ Usage:
 import asyncio
 import logging
 
-# ── Imports from ProwlrBot's ROAR reference implementation ──────────────────
-from prowlrbot.protocols.roar import (
+# ── Imports from the standalone roar-sdk package ────────────────────────────
+from roar_sdk import (
     AgentCard,
     AgentIdentity,
     MessageIntent,
     ROARMessage,
+    ROARClient,
 )
-from prowlrbot.protocols.sdk.client import ROARClient
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger("roar-client")
