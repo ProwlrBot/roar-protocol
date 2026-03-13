@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/ProwlrBot/prowlrbot"><img src="https://img.shields.io/badge/reference%20impl-prowlrbot-00E5FF?style=flat-square" /></a>
-  <a href="https://github.com/ProwlrBot/roar-protocol/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square" /></a>
+  <a href="https://github.com/ProwlrBot/roar-protocol/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
   <img src="https://img.shields.io/badge/spec-v0.2.0-orange?style=flat-square" />
   <img src="https://img.shields.io/badge/status-active-green?style=flat-square" />
 </p>
