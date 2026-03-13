@@ -59,6 +59,9 @@ export class Subscription implements AsyncIterable<StreamEvent> {
   eventsReceived = 0;
   eventsDropped = 0;
 
+  // AIMD capacity: floats between 1 and maxBuffer
+  private _capacity: number;
+
   constructor(
     id: string,
     filter: StreamFilter,
@@ -68,23 +71,34 @@ export class Subscription implements AsyncIterable<StreamEvent> {
     this.id = id;
     this.filter = filter;
     this._bus = bus;
+    this._capacity = maxBuffer;
+  }
+
+  /** AIMD effective limit (floor of floating capacity). */
+  get effectiveLimit(): number {
+    return Math.floor(this._capacity);
   }
 
   /** @internal — called by EventBus.publish */
   _deliver(event: StreamEvent): boolean {
     if (this._closed) return false;
     if (this._resolve) {
-      // Waiting consumer — deliver directly
+      // Waiting consumer — deliver directly; additive increase
       const resolve = this._resolve;
       this._resolve = null;
+      this._capacity = Math.min(this.maxBuffer, this._capacity + 1);
       this.eventsReceived++;
       resolve(event);
       return true;
     }
-    if (this._buffer.length >= this.maxBuffer) {
-      // Backpressure: drop oldest (FIFO)
+    if (this._buffer.length >= this.effectiveLimit) {
+      // Backpressure: multiplicative decrease, drop oldest
+      this._capacity = Math.max(1, this._capacity * 0.5);
       this._buffer.shift();
       this.eventsDropped++;
+    } else {
+      // Buffered without drop: additive increase
+      this._capacity = Math.min(this.maxBuffer, this._capacity + 1);
     }
     this._buffer.push(event);
     return true;

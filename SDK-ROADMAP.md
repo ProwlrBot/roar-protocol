@@ -111,7 +111,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | HTTP transport (`ROARClient`) | ✅ | `client.ts` |
 | WebSocket transport (client) | ✅ | `websocket.ts` |
 | Native HTTP router (SSE + WS server + rate limit) | ✅ | `router.ts` |
-| stdio transport | ❌ | future |
+| stdio transport | ✅ | `stdio.ts` |
 
 ### Layer 4 — Exchange
 
@@ -129,7 +129,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | `EventBus` + `Subscription` + `StreamFilter` | ✅ | `streaming.ts` |
 | SSE via native HTTP router | ✅ | `router.ts` |
 | `IdempotencyGuard` | ✅ | `dedup.ts` |
-| AIMD backpressure | ⚠️ Drop-oldest only, not full AIMD | `streaming.ts` |
+| AIMD backpressure | ✅ | `streaming.ts` |
 
 ---
 
@@ -153,10 +153,9 @@ All 30 checks must pass before claiming ROAR compliance.
 
 ### TypeScript (Medium Priority)
 
-1. stdio transport
-2. `did:key`, `did:web` (requires base58 encoder)
-3. Full AIMD backpressure controller (replace drop-oldest)
-4. SQLite-backed persistent directory
+1. `did:key`, `did:web` (requires base58 encoder)
+2. SQLite-backed persistent directory
+3. Protocol auto-detection adapter
 
 ### Python (Medium Priority)
 
