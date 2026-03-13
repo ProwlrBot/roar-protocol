@@ -94,7 +94,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | W3C DID Document | ❌ | future |
 | `did:key` ephemeral identities | ✅ | `did_key.ts` |
 | `did:web` DNS-bound identities | ✅ | `did_web.ts` |
-| `AutonomyLevel` + `CapabilityDelegation` | ❌ | future |
+| `AutonomyLevel` + `CapabilityDelegation` | ✅ | `autonomy.ts` |
 
 ### Layer 2 — Discovery
 

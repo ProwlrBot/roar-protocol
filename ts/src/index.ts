@@ -89,3 +89,11 @@ export { urlToDidWeb, didWebToUrl } from "./did_web.js";
 // Protocol auto-detection (Layer 4)
 export { detectProtocol, normalizeToROAR } from "./detect.js";
 export type { DetectedProtocol } from "./detect.js";
+
+// Autonomy levels + capability delegation (Layer 1)
+export { AutonomyLevel, CapabilityDelegation } from "./autonomy.js";
+export type { RuntimeToken } from "./autonomy.js";
+
+// Discovery cache — TTL + LRU (Layer 2)
+export { DiscoveryCache } from "./discovery_cache.js";
+export type { DiscoveryCacheStats } from "./discovery_cache.js";
