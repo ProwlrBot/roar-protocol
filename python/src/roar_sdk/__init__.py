@@ -60,7 +60,15 @@ from .streaming import EventBus, StreamFilter, Subscription
 from .signing import generate_keypair, sign_ed25519, verify_ed25519
 from .delegation import DelegationToken, issue_token, verify_token
 from .adapters import ACPAdapter
+from .adapters.detect import detect_protocol, ProtocolType
 from .hub import ROARHub
+from .did_document import DIDDocument, VerificationMethod, ServiceEndpoint
+from .did_key import DIDKeyMethod, DIDKeyIdentity
+from .did_web import DIDWebMethod, DIDWebIdentity
+from .sqlite_directory import SQLiteAgentDirectory
+from .discovery_cache import DiscoveryCache
+from .dedup import IdempotencyGuard
+from .autonomy import AutonomyLevel, CapabilityDelegation, RuntimeToken
 
 __all__ = [
     # Layer 1
@@ -83,6 +91,8 @@ __all__ = [
     "MCPAdapter",
     "A2AAdapter",
     "ACPAdapter",
+    "detect_protocol",
+    "ProtocolType",
     # Client / Server / Hub
     "ROARClient",
     "ROARServer",
@@ -95,8 +105,25 @@ __all__ = [
     "generate_keypair",
     "sign_ed25519",
     "verify_ed25519",
-    # Delegation tokens
+    # Delegation tokens (cryptographic, portable)
     "DelegationToken",
     "issue_token",
     "verify_token",
+    # DID methods
+    "DIDDocument",
+    "VerificationMethod",
+    "ServiceEndpoint",
+    "DIDKeyMethod",
+    "DIDKeyIdentity",
+    "DIDWebMethod",
+    "DIDWebIdentity",
+    # Persistent discovery
+    "SQLiteAgentDirectory",
+    "DiscoveryCache",
+    # Autonomy model (runtime policy enforcement)
+    "AutonomyLevel",
+    "CapabilityDelegation",
+    "RuntimeToken",
+    # Deduplication
+    "IdempotencyGuard",
 ]
