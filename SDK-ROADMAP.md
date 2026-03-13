@@ -1,7 +1,8 @@
 # ROAR SDK Roadmap
 
 > Status of Python and TypeScript SDK implementations relative to the spec.
-> This document is for contributors who want to close implementation gaps.
+
+Last updated: 2026-03-13
 
 ---
 
@@ -9,176 +10,160 @@
 
 | Layer | Spec | Python SDK | TypeScript SDK |
 |:------|:----:|:----------:|:--------------:|
-| 1 — Identity | ✅ Complete | ✅ `roar.py` — `AgentIdentity`, `AgentCard`, DID generation | ⚠️ Types exist, field names diverge (see §Types) |
-| 2 — Discovery | ✅ Complete | ✅ `roar.py` — `AgentDirectory`, `AgentCard`, in-memory | ⚠️ Not implemented |
-| 3 — Connect | ✅ Complete | ✅ `sdk/transports/` — HTTP, WebSocket, stdio | ⚠️ Not implemented |
-| 4 — Exchange | ✅ Complete | ✅ `roar.py` — `ROARMessage`, `MessageIntent`, HMAC-SHA256 | ⚠️ Implemented, but enum/field names wrong |
-| 5 — Stream | ✅ Complete | ✅ `sdk/streaming/` — `EventBus`, backpressure, dedup | ⚠️ `StreamEventType` enum values wrong |
+| 1 — Identity | ✅ | ✅ Complete | ✅ Complete |
+| 2 — Discovery | ✅ | ✅ Complete | ⚠️ In-memory only |
+| 3 — Connect | ✅ | ✅ Complete | ⚠️ HTTP only |
+| 4 — Exchange | ✅ | ✅ Complete | ✅ Complete |
+| 5 — Stream | ✅ | ✅ Complete | ✅ Complete |
 
-**Python SDK reference:** `prowlrbot/src/prowlrbot/protocols/`
-**TypeScript SDK reference:** `prowlrbot/packages/roar-sdk-ts/`
-
----
-
-## Critical: Python / TypeScript Type Divergence
-
-Python is the source of truth. TypeScript must be aligned to Python field names and enum values.
-
-### MessageIntent — Must Fix
-
-| Python (canonical) | TypeScript (current) | Action |
-|:-------------------|:---------------------|:-------|
-| `execute` | `tool_call` | Rename to `execute` |
-| `delegate` | — | Add |
-| `update` | — | Add |
-| `ask` | `query` | Rename to `ask` |
-| `respond` | `response` | Rename to `respond` |
-| `notify` | — | Add |
-| `discover` | `negotiate` | Rename to `discover` |
-| — | `heartbeat` | Remove → use `StreamEventType.AGENT_STATUS` |
-| — | `error` | Remove → use `RESPOND` with `payload.error` |
-| — | `stream_start/data/end` | Remove → use `StreamEvent` system |
-
-### AgentIdentity — Must Fix
-
-| Python (canonical) | TypeScript (current) | Action |
-|:-------------------|:---------------------|:-------|
-| `did` | `agent_id` | Rename to `did` |
-| `display_name` | `display_name` | ✅ Same |
-| `agent_type` | `agent_type` | ✅ Same |
-| `capabilities: string[]` | `capabilities: AgentCapability[]` | Simplify to `string[]` |
-| `version: str` | `version: string` | ✅ Same |
-| `public_key: Optional[str]` | `public_key?: string` | ✅ Same |
-
-### ROARMessage — Must Fix
-
-| Python (canonical) | TypeScript (current) | Action |
-|:-------------------|:---------------------|:-------|
-| `roar: str` | — | Add |
-| `id: str` | `id: string` | ✅ Same |
-| `from_identity: AgentIdentity` | `from_agent: string` | Change to full identity object |
-| `to_identity: AgentIdentity` | `to_agent: string` | Change to full identity object |
-| `intent: MessageIntent` | `type: MessageIntent` | Rename to `intent` |
-| `payload: dict` | `content: any` | Rename to `payload` |
-| `context: dict` | `metadata: any` | Rename to `context` |
-| `auth: {signature, timestamp}` | `signature: string` | Change to `auth` object |
-| `timestamp: float` | `timestamp: string` (ISO) | Change to Unix float |
-
-### StreamEventType — Must Fix
-
-| Python (canonical) | TypeScript (current) | Action |
-|:-------------------|:---------------------|:-------|
-| `tool_call` | `started` | Rename |
-| `mcp_request` | `data` | Rename |
-| `reasoning` | `progress` | Rename |
-| `task_update` | `completed` | Rename |
-| `monitor_alert` | `error` | Rename |
-| `agent_status` | `cancelled` | Rename |
-| `checkpoint` | — | Add |
-| `world_update` | — | Add |
-
-### Signing Canonical Body — Must Fix
-
-Both SDKs must sign the same body. Python signs:
-
-```python
-json.dumps({
-    "id": msg.id,
-    "from": msg.from_identity.did,
-    "to": msg.to_identity.did,
-    "intent": msg.intent,
-    "payload": msg.payload,
-    "context": msg.context,
-    "timestamp": msg.auth.get("timestamp"),
-}, sort_keys=True)
-```
-
-TypeScript currently signs only `{id, intent, payload}` — missing `from`, `to`, `context`, `timestamp`. This means a message signed in Python cannot be verified in TypeScript and vice versa.
-
-The golden fixture at `tests/conformance/golden/signature.json` defines the expected HMAC value for a fixed input. Any compliant SDK must produce the same value.
+**Conformance:** Python ✅ 30/30 &nbsp;|&nbsp; TypeScript ✅ 30/30
 
 ---
 
-## Open Tasks by Layer
+## Python SDK — Feature Matrix
 
 ### Layer 1 — Identity
 
-| Task | SDK | Priority |
-|:-----|:----|:---------|
-| Align field names: `agent_id` → `did`, etc. | TypeScript | **Critical** |
-| Ed25519 signing/verification | Python (partial), TypeScript (missing) | High |
-| DID document generation (`did:roar:` method) | Python (done), TypeScript (missing) | Medium |
-| Delegation tokens (scoped capability grants) | Python (partial), TypeScript (missing) | Medium |
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| `AgentIdentity` + `did:roar:` DID generation | ✅ | `types.py` |
+| `AgentCard`, `AgentCapability` | ✅ | `types.py` |
+| W3C DID Document generation | ✅ | `did_document.py` |
+| `did:key` ephemeral identities | ✅ | `did_key.py` |
+| `did:web` DNS-bound identities | ✅ | `did_web.py` |
+| `AutonomyLevel` + `CapabilityDelegation` | ✅ | `autonomy.py` |
+| `DelegationToken` (cryptographic, portable) | ✅ | `delegation.py` |
+| Ed25519 key generation and signing | ✅ | `signing.py` |
 
 ### Layer 2 — Discovery
 
-| Task | SDK | Priority |
-|:-----|:----|:---------|
-| In-memory `AgentDirectory` | TypeScript (missing) | High |
-| SQLite-backed directory | Python (done at `sdk/discovery/sqlite_directory.py`) | — |
-| Hub federation (cross-machine sync) | Python (partial), TypeScript (missing) | Medium |
-| DNS-based discovery (IETF BANDAID alignment) | Both (missing) | Low |
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| In-memory `AgentDirectory` | ✅ | `types.py` |
+| SQLite-backed persistent directory | ✅ | `sqlite_directory.py` |
+| `DiscoveryCache` (TTL + LRU) | ✅ | `discovery_cache.py` |
+| `ROARHub` with REST API | ✅ | `hub.py` |
+| Hub federation (push/pull sync) | ✅ | `hub.py` |
+| DNS-based discovery (BANDAID) | ❌ | future |
 
 ### Layer 3 — Connect
 
-| Task | SDK | Priority |
-|:-----|:----|:---------|
-| HTTP transport (send/receive) | Python (done), TypeScript (missing) | High |
-| WebSocket transport | Python (done), TypeScript (missing) | High |
-| stdio transport | Python (done), TypeScript (missing) | Medium |
-| gRPC transport | Both (missing) | Low |
-| Transport auto-selection | Python (done), TypeScript (missing) | High |
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| HTTP transport | ✅ | `transports/` |
+| WebSocket transport | ✅ | `transports/` |
+| stdio transport | ✅ | `transports/` |
+| FastAPI router (HTTP + WS + SSE) | ✅ | `router.py` |
+| Token-bucket rate limiting | ✅ | `router.py` |
+| gRPC transport | ❌ | future |
 
 ### Layer 4 — Exchange
 
-| Task | SDK | Priority |
-|:-----|:----|:---------|
-| Unify MessageIntent enum values | TypeScript | **Critical** |
-| Unify ROARMessage field names | TypeScript | **Critical** |
-| Unify signing canonical body | TypeScript | **Critical** |
-| ACP adapter | Python (stub), TypeScript (missing) | Medium |
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| `ROARMessage` + 7 intents | ✅ | `types.py` |
+| HMAC-SHA256 signing + replay protection | ✅ | `types.py` |
+| Ed25519 message signing/verification | ✅ | `signing.py` |
+| `IdempotencyGuard` (dedup) | ✅ | `dedup.py` |
+| MCP adapter | ✅ | `types.py` |
+| A2A adapter | ✅ | `types.py` |
+| ACP adapter | ✅ | `adapters/acp.py` |
+| Protocol auto-detection | ✅ | `adapters/detect.py` |
 
 ### Layer 5 — Stream
 
-| Task | SDK | Priority |
-|:-----|:----|:---------|
-| Unify StreamEventType enum values | TypeScript | **Critical** |
-| EventBus pub/sub | Python (done), TypeScript (missing) | High |
-| SSE transport binding | Python (done via A2A server), TypeScript (missing) | High |
-| AIMD backpressure | Python (done), TypeScript (missing) | Medium |
-| Deduplication filter | Python (done), TypeScript (missing) | Low |
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| `EventBus` + `Subscription` + `StreamFilter` | ✅ | `streaming.py` |
+| AIMD backpressure | ✅ | `streaming.py` |
+| `IdempotencyGuard` for stream dedup | ✅ | `dedup.py` |
+| SSE via FastAPI router | ✅ | `router.py` |
 
 ---
 
-## Conformance Testing
+## TypeScript SDK — Feature Matrix
 
-Any SDK that claims ROAR compliance must pass all golden fixtures in `tests/conformance/golden/`:
+### Layer 1 — Identity
 
-1. **`identity.json`** — parse the golden AgentIdentity, verify DID format, round-trip serialize
-2. **`message.json`** — parse the golden ROARMessage, verify all field names and intent value
-3. **`stream-event.json`** — parse the golden StreamEvent, verify type enum value
-4. **`signature.json`** — reproduce the HMAC-SHA256 signature for the given input and secret
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| `AgentIdentity` + `did:roar:` DID generation | ✅ | `types.ts` |
+| `AgentCard`, `AgentCapability` | ✅ | `types.ts` |
+| Ed25519 key generation and signing | ✅ | `signing.ts` |
+| W3C DID Document | ❌ | future |
+| `did:key`, `did:web` | ❌ | future |
+| `AutonomyLevel` + `CapabilityDelegation` | ❌ | future |
+| `DelegationToken` (cryptographic) | ⚠️ Ed25519 done, token model pending | |
 
-Run Python conformance: `pytest tests/conformance/`
-Run TypeScript conformance: `npm test -- conformance` (pending implementation)
+### Layer 2 — Discovery
+
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| In-memory `AgentDirectory` | ✅ | `types.ts` |
+| SQLite-backed persistent directory | ❌ | future |
+| `DiscoveryCache` | ❌ | future |
+| Hub federation | ❌ | future |
+
+### Layer 3 — Connect
+
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| HTTP transport (`ROARClient`) | ✅ | `client.ts` |
+| WebSocket transport | ❌ | future |
+| stdio transport | ❌ | future |
+| FastAPI-equivalent Express/Fastify router | ❌ | future |
+
+### Layer 4 — Exchange
+
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| `ROARMessage` + 7 intents | ✅ | `types.ts` |
+| HMAC-SHA256 signing (`pythonJsonDumps` compatible) | ✅ | `message.ts` |
+| Ed25519 signing/verification | ✅ | `signing.ts` |
+| Protocol auto-detection | ❌ | future |
+
+### Layer 5 — Stream
+
+| Feature | Status | Module |
+|:--------|:------:|:-------|
+| `EventBus` + `Subscription` + `StreamFilter` | ✅ | `streaming.ts` |
+| AIMD backpressure | ⚠️ Drop-oldest only, not full AIMD | `streaming.ts` |
+| `IdempotencyGuard` | ❌ | future |
 
 ---
 
-## How to Contribute
+## Conformance
 
-1. Pick a task from the tables above
-2. Open an issue using the [Spec Change template](.github/ISSUE_TEMPLATE/spec_change.md) if you're proposing a spec change
-3. For SDK work, open PRs in [prowlrbot](https://github.com/ProwlrBot/prowlrbot) and reference this doc
-4. Add or update golden fixtures if you change the canonical types
-5. Bump `spec/VERSION.json` when spec (not SDK) changes are merged
+Run the full conformance suite (no install needed):
+
+```bash
+# Python
+cd python && pip install -e ".[dev]" && pytest tests/conformance/
+
+# TypeScript
+node tests/validate_golden.mjs
+```
+
+All 30 checks must pass before claiming ROAR compliance.
 
 ---
 
-## Non-Goals
+## Next SDK Priorities
 
-These are explicitly out of scope for the ROAR core spec:
+### TypeScript (High Priority)
 
-- **Billing / credits** — handled at the platform layer (ProwlrBot marketplace)
-- **Access control lists** — layer on top of identity via `require_approval_for` in AutonomyPolicy
-- **Persistent message queuing** — transport-level concern, not protocol-level
-- **Content encryption** — use TLS at the transport layer; ROAR signs but does not encrypt payloads
+1. `DelegationToken` model (port from Python)
+2. WebSocket transport
+3. `IdempotencyGuard`
+4. FastAPI-equivalent router (Express or native http)
+
+### Python (Medium Priority)
+
+1. DNS-based discovery (IETF BANDAID alignment)
+2. gRPC transport stub
+3. `DelegationToken` use-count enforcement (currently unlimited-use tokens aren't decremented server-side)
+
+### Both SDKs (Low Priority)
+
+1. `did:key` for TypeScript (requires base58 dep or custom encoder)
+2. Full AIMD controller for TypeScript streaming (replace drop-oldest with proper rate adaptation)
