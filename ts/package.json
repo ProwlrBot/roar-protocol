@@ -3,10 +3,17 @@
   "version": "0.2.0",
   "description": "TypeScript SDK for the ROAR Protocol (Real-time Open Agent Runtime)",
   "type": "module",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
+  "files": [
+    "dist"
+  ],
   "engines": {
     "node": ">=18.0.0"
   },
@@ -25,6 +32,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@types/node": "^25.5.0",
     "tsx": "^4.21.0",
     "typescript": "^5.4.0"
   }
