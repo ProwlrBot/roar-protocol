@@ -70,6 +70,10 @@ class ROARServer:
         self._signing_secret = signing_secret
         self._handlers: Dict[MessageIntent, HandlerFunc] = {}
         self._event_bus = EventBus()
+        # Server-authoritative use counts keyed by token_id.
+        # The delegate's claimed use_count in the wire payload is ignored;
+        # this dict is the only source of truth for max_uses enforcement.
+        self._token_use_counts: Dict[str, int] = {}
 
     @property
     def identity(self) -> AgentIdentity:
@@ -127,6 +131,10 @@ class ROARServer:
                     payload={"error": "invalid_delegation_token", "message": "Malformed delegation token."},
                     context={"in_reply_to": msg.id},
                 )
+            # Replace the delegate-supplied use_count with the server-tracked
+            # count. This prevents a delegate from replaying a token by always
+            # sending use_count=0 in the wire payload.
+            token.use_count = self._token_use_counts.get(token.token_id, 0)
             if not token.is_valid():
                 return ROARMessage(
                     **{"from": self._identity, "to": msg.from_identity},
@@ -134,7 +142,8 @@ class ROARServer:
                     payload={"error": "delegation_token_exhausted", "message": "Token expired or use limit reached."},
                     context={"in_reply_to": msg.id},
                 )
-            token.consume()
+            # Increment server-tracked count atomically (single-threaded coroutine).
+            self._token_use_counts[token.token_id] = token.use_count + 1
 
         handler = self._handlers.get(msg.intent)
         if handler is None:
