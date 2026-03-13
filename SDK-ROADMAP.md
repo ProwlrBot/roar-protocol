@@ -2,7 +2,7 @@
 
 > Status of Python and TypeScript SDK implementations relative to the spec.
 
-Last updated: 2026-03-13 (TypeScript gaps closed)
+Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audited, 30/30 conformance)
 
 ---
 
@@ -152,13 +152,17 @@ All 30 checks must pass before claiming ROAR compliance.
 
 ## Next SDK Priorities
 
-### Python (Medium Priority)
+### TypeScript SDK — v1.0 Release
+- [ ] npm publish as `@roar-protocol/sdk`
+- [ ] GitHub Actions CI (typecheck + conformance on every PR)
+- [ ] Changelog / release notes
 
-1. DNS-based discovery (IETF BANDAID alignment)
-2. gRPC transport stub
-3. `DelegationToken` use-count enforcement (currently unlimited-use tokens aren't decremented server-side)
+### Python SDK — Medium Priority
+1. `DelegationToken` use-count enforcement server-side (currently honor-system)
+2. DNS-based discovery (IETF BANDAID alignment)
+3. gRPC transport stub
 
-### Both SDKs (Low Priority)
-
-1. `did:key` for TypeScript (requires base58 dep or custom encoder)
-2. Full AIMD controller for TypeScript streaming (replace drop-oldest with proper rate adaptation)
+### Both SDKs — Future
+1. Hub federation (ROARHub REST server in TypeScript)
+2. QUIC/HTTP3 transport
+3. Browser/WASM compatibility layer
