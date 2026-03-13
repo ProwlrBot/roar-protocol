@@ -89,6 +89,9 @@ function wsSendClose(socket: net.Socket): void {
   socket.destroy();
 }
 
+/** Maximum WebSocket payload we accept (1 MiB). Prevents memory exhaustion DoS. */
+const MAX_WS_PAYLOAD = 1 * 1024 * 1024;
+
 /** Parse complete frames from a buffer. Returns [parsedFrames, remainder]. */
 function parseWsFrames(buf: Buffer): [string[], Buffer] {
   const texts: string[] = [];
@@ -109,8 +112,20 @@ function parseWsFrames(buf: Buffer): [string[], Buffer] {
       hdrEnd += 2;
     } else if (payloadLen === 127) {
       if (buf.length < hdrEnd + 8) break;
-      payloadLen = buf.readUInt32BE(hdrEnd + 4); // low 32 bits
+      // RFC 6455: high 32 bits must be zero. Non-zero = frame >4 GB, reject.
+      const high = buf.readUInt32BE(hdrEnd);
+      if (high !== 0) {
+        texts.push("\x00CLOSE");
+        break;
+      }
+      payloadLen = buf.readUInt32BE(hdrEnd + 4);
       hdrEnd += 8;
+    }
+
+    // Reject oversized frames before allocating any buffer for them.
+    if (payloadLen > MAX_WS_PAYLOAD) {
+      texts.push("\x00CLOSE");
+      break;
     }
 
     const maskLen = masked ? 4 : 0;
@@ -153,6 +168,12 @@ export interface ROARRouterOptions {
   authToken?: string;
   /** Maximum simultaneous SSE connections. Default 100. */
   maxSseConnections?: number;
+  /**
+   * Trust X-Forwarded-For header for rate-limit IP bucketing.
+   * Only enable when running behind a trusted reverse proxy (nginx, fly.io, etc.).
+   * Default false — uses socket.remoteAddress, which cannot be spoofed.
+   */
+  trustProxy?: boolean;
 }
 
 export interface ROARRouter {
@@ -184,6 +205,7 @@ export function createROARRouter(
   const rateLimit = opts.rateLimit ?? 0;
   const authToken = opts.authToken ?? "";
   const maxSse = opts.maxSseConnections ?? 100;
+  const trustProxy = opts.trustProxy ?? false;
 
   // Per-IP token buckets (rate limiter)
   const _buckets = new Map<string, TokenBucket>();
@@ -193,8 +215,10 @@ export function createROARRouter(
   let _sseCount = 0;
 
   function _getIp(req: http.IncomingMessage): string {
-    const forwarded = req.headers["x-forwarded-for"];
-    if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
+    if (trustProxy) {
+      const forwarded = req.headers["x-forwarded-for"];
+      if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
+    }
     return req.socket?.remoteAddress ?? "unknown";
   }
 

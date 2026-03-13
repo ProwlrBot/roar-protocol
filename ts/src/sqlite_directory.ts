@@ -16,7 +16,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { homedir } from "node:os";
 import { mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 import { AgentCard, DiscoveryEntry } from "./types.js";
 
 const DEFAULT_DB_PATH = join(homedir(), ".roar", "roar_directory.db");
@@ -25,8 +25,9 @@ export class SqliteAgentDirectory {
   private readonly _db: DatabaseSync;
 
   constructor(dbPath: string = DEFAULT_DB_PATH) {
-    mkdirSync(dirname(dbPath), { recursive: true });
-    this._db = new DatabaseSync(dbPath);
+    const resolvedPath = resolve(dbPath);
+    mkdirSync(dirname(resolvedPath), { recursive: true });
+    this._db = new DatabaseSync(resolvedPath);
     this._createTables();
   }
 

@@ -19,11 +19,19 @@ function writeLine(line: string): void {
   process.stdout.write(line + "\n");
 }
 
+/** Max bytes buffered waiting for a newline before aborting (10 MiB). */
+const MAX_LINE_BYTES = 10 * 1024 * 1024;
+
 async function readLine(): Promise<string> {
   return new Promise((resolve, reject) => {
     let buf = "";
     const onData = (chunk: Buffer | string) => {
       buf += chunk.toString();
+      if (buf.length > MAX_LINE_BYTES) {
+        cleanup();
+        reject(new Error("stdioSend: incoming line exceeded 10 MiB — aborting"));
+        return;
+      }
       const nl = buf.indexOf("\n");
       if (nl !== -1) {
         cleanup();

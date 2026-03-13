@@ -100,12 +100,17 @@ export function tokenGrants(token: DelegationToken, capability: string): boolean
 }
 
 /**
- * Consume one use of the token (increment use_count).
- * Returns true if use was recorded, false if the token had no remaining uses.
+ * Atomically check validity and consume one use of the token (increment use_count).
+ * Returns true if use was recorded, false if the token is exhausted.
+ *
+ * This is a single synchronous check+increment with no await between them,
+ * making it safe against TOCTOU in JS's single-threaded event loop.
+ * Do NOT call isTokenValid() separately before this — use verifyAndValidateToken()
+ * to combine signature + validity + consume in one logical step.
  */
 export function consumeToken(token: DelegationToken): boolean {
   if (token.max_uses !== null && token.use_count >= token.max_uses) return false;
-  token.use_count++;
+  token.use_count += 1;
   return true;
 }
 
@@ -172,11 +177,12 @@ export function issueToken(
 }
 
 /**
- * Verify a DelegationToken's Ed25519 signature.
+ * Verify a DelegationToken's Ed25519 signature only.
  *
  * @param token               - the token to verify
  * @param delegatorPublicKey  - 32-byte raw public key as hex (must match token.delegator_did's key)
- * @returns true if signature is valid (does NOT check expiry or use count)
+ * @returns true if signature is cryptographically valid
+ * @note Does NOT check expiry or use count — use verifyAndValidateToken for full validation.
  */
 export function verifyToken(token: DelegationToken, delegatorPublicKey: string): boolean {
   if (!token.signature.startsWith("ed25519:")) return false;
@@ -188,4 +194,14 @@ export function verifyToken(token: DelegationToken, delegatorPublicKey: string):
   } catch {
     return false;
   }
+}
+
+/**
+ * Verify signature AND check that the token is not expired or exhausted.
+ * Prefer this over calling verifyToken + isTokenValid separately (avoids TOCTOU).
+ *
+ * @returns true only if signature valid AND not expired AND uses remaining
+ */
+export function verifyAndValidateToken(token: DelegationToken, delegatorPublicKey: string): boolean {
+  return verifyToken(token, delegatorPublicKey) && isTokenValid(token);
 }

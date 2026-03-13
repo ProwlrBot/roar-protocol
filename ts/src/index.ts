@@ -62,6 +62,7 @@ export type { Ed25519KeyPair } from "./signing.js";
 export {
   issueToken,
   verifyToken,
+  verifyAndValidateToken,
   isTokenValid,
   tokenGrants,
   consumeToken,

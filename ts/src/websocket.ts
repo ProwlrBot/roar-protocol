@@ -185,10 +185,15 @@ export class ROARWebSocket {
         offset = 4;
       } else if (payloadLen === 127) {
         if (this._buffer.length < 10) return;
-        // Only handle up to 32-bit lengths (safe for agent messages)
+        // High 32 bits must be zero — non-zero means frame >4 GB, close.
+        const high = this._buffer.readUInt32BE(2);
+        if (high !== 0) { this.close(); return; }
         payloadLen = this._buffer.readUInt32BE(6);
         offset = 10;
       }
+
+      // Reject oversized frames (1 MiB cap) to prevent memory exhaustion.
+      if (payloadLen > 1 * 1024 * 1024) { this.close(); return; }
 
       const maskLen = masked ? 4 : 0;
       const totalLen = offset + maskLen + payloadLen;
