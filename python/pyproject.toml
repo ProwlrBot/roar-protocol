@@ -4,16 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "roar-sdk"
-version = "0.2.1"
+version = "0.3.0"
 description = "ROAR Protocol — Python SDK. Standalone implementation of the 5-layer agent communication standard."
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = { text = "MIT" }
 authors = [{ name = "kdairatchi", email = "kdairatchi@users.noreply.github.com" }]
 keywords = ["agents", "ai", "protocol", "roar", "did", "a2a", "mcp"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
