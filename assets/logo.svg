@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" width="400" height="120">
+  <defs>
+    <style>
+      .bg { fill: #0d1117; }
+      .arc { fill: none; stroke: #00e5cc; stroke-linecap: round; }
+      .arc-outer { stroke-width: 3; opacity: 0.45; }
+      .arc-mid   { stroke-width: 3.5; opacity: 0.70; }
+      .arc-inner { stroke-width: 4; opacity: 1.0; }
+      .eye       { fill: #ffb347; }
+      .roar-text {
+        font-family: "Courier New", Courier, "Lucida Console", monospace;
+        font-weight: 700;
+        fill: #f0f6fc;
+        letter-spacing: 6px;
+      }
+      .proto-text {
+        font-family: "Courier New", Courier, "Lucida Console", monospace;
+        font-weight: 400;
+        fill: #00e5cc;
+        letter-spacing: 4px;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect class="bg" width="400" height="120" rx="8"/>
+
+  <!-- Radar arcs, centered on (62, 60), spanning upper-right quadrant + a bit -->
+  <!-- Outer arc: r=46 -->
+  <path class="arc arc-outer"
+        d="M 62,14
+           A 46,46 0 0,1 108,60
+           A 46,46 0 0,1 62,106"/>
+
+  <!-- Middle arc: r=30 -->
+  <path class="arc arc-mid"
+        d="M 62,30
+           A 30,30 0 0,1 92,60
+           A 30,30 0 0,1 62,90"/>
+
+  <!-- Inner arc: r=16 -->
+  <path class="arc arc-inner"
+        d="M 62,44
+           A 16,16 0 0,1 78,60
+           A 16,16 0 0,1 62,76"/>
+
+  <!-- Agent eye — origin point of the arcs -->
+  <circle class="eye" cx="62" cy="60" r="5"/>
+
+  <!-- Vertical divider -->
+  <line x1="124" y1="22" x2="124" y2="98"
+        stroke="#00e5cc" stroke-width="1" opacity="0.25"/>
+
+  <!-- ROAR wordmark -->
+  <text class="roar-text" font-size="48" x="142" y="70">ROAR</text>
+
+  <!-- Protocol subtext -->
+  <text class="proto-text" font-size="13" x="146" y="91">Protocol</text>
+</svg>
