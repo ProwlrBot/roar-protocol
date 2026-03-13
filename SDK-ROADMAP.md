@@ -11,7 +11,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | Layer | Spec | Python SDK | TypeScript SDK |
 |:------|:----:|:----------:|:--------------:|
 | 1 — Identity | ✅ | ✅ Complete | ✅ Complete |
-| 2 — Discovery | ✅ | ✅ Complete | ⚠️ Partial (no Hub/cache) |
+| 2 — Discovery | ✅ | ✅ Complete | ⚠️ Partial (no Hub/federation) |
 | 3 — Connect | ✅ | ✅ Complete | ✅ Complete |
 | 4 — Exchange | ✅ | ✅ Complete | ✅ Complete |
 | 5 — Stream | ✅ | ✅ Complete | ✅ Complete |
@@ -102,7 +102,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 |:--------|:------:|:-------|
 | In-memory `AgentDirectory` | ✅ | `types.ts` |
 | SQLite-backed persistent directory | ✅ | `sqlite_directory.ts` |
-| `DiscoveryCache` | ❌ | future |
+| `DiscoveryCache` | ✅ | `discovery_cache.ts` |
 | Hub federation | ❌ | future |
 
 ### Layer 3 — Connect
