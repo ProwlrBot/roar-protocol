@@ -80,3 +80,11 @@ export { SqliteAgentDirectory } from "./sqlite_directory.js";
 // Router (SSE + WebSocket + rate limiting)
 export { createROARRouter } from "./router.js";
 export type { ROARRouter, ROARRouterOptions } from "./router.js";
+
+// DID methods (Layer 1 — identity)
+export { publicKeyToDidKey, didKeyToPublicKey } from "./did_key.js";
+export { urlToDidWeb, didWebToUrl } from "./did_web.js";
+
+// Protocol auto-detection (Layer 4)
+export { detectProtocol, normalizeToROAR } from "./detect.js";
+export type { DetectedProtocol } from "./detect.js";

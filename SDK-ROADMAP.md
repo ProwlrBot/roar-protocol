@@ -92,7 +92,8 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | Ed25519 key generation and signing | ✅ | `signing.ts` |
 | `DelegationToken` (cryptographic) | ✅ | `delegation.ts` |
 | W3C DID Document | ❌ | future |
-| `did:key`, `did:web` | ❌ | future |
+| `did:key` ephemeral identities | ✅ | `did_key.ts` |
+| `did:web` DNS-bound identities | ✅ | `did_web.ts` |
 | `AutonomyLevel` + `CapabilityDelegation` | ❌ | future |
 
 ### Layer 2 — Discovery
@@ -153,8 +154,7 @@ All 30 checks must pass before claiming ROAR compliance.
 
 ### TypeScript (Medium Priority)
 
-1. `did:key`, `did:web` (requires base58 encoder)
-2. Protocol auto-detection adapter
+1. Protocol auto-detection adapter
 
 ### Python (Medium Priority)
 
