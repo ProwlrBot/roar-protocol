@@ -340,9 +340,27 @@ export function createROARRouter(
         return true;
       }
 
+      /** 1 MiB cap — prevents memory exhaustion from oversized POST bodies. */
+      const MAX_BODY_BYTES = 1 * 1024 * 1024;
       let body = "";
-      req.on("data", (chunk: Buffer | string) => (body += chunk.toString()));
+      let bodyBytes = 0;
+      let bodySizeExceeded = false;
+      req.on("data", (chunk: Buffer | string) => {
+        const chunkStr = typeof chunk === "string" ? chunk : chunk.toString();
+        bodyBytes += Buffer.byteLength(chunkStr);
+        if (bodyBytes > MAX_BODY_BYTES) {
+          bodySizeExceeded = true;
+          req.destroy();
+          return;
+        }
+        body += chunkStr;
+      });
       req.on("end", async () => {
+        if (bodySizeExceeded) {
+          res.writeHead(413, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "request_too_large" }));
+          return;
+        }
         try {
           const raw = JSON.parse(body) as Record<string, unknown>;
           const msg = messageFromWire(raw);
