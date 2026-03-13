@@ -2,7 +2,7 @@
 
 > Status of Python and TypeScript SDK implementations relative to the spec.
 
-Last updated: 2026-03-13
+Last updated: 2026-03-13 (TypeScript gaps closed)
 
 ---
 
@@ -12,7 +12,7 @@ Last updated: 2026-03-13
 |:------|:----:|:----------:|:--------------:|
 | 1 — Identity | ✅ | ✅ Complete | ✅ Complete |
 | 2 — Discovery | ✅ | ✅ Complete | ⚠️ In-memory only |
-| 3 — Connect | ✅ | ✅ Complete | ⚠️ HTTP only |
+| 3 — Connect | ✅ | ✅ Complete | ✅ Complete |
 | 4 — Exchange | ✅ | ✅ Complete | ✅ Complete |
 | 5 — Stream | ✅ | ✅ Complete | ✅ Complete |
 
@@ -90,10 +90,10 @@ Last updated: 2026-03-13
 | `AgentIdentity` + `did:roar:` DID generation | ✅ | `types.ts` |
 | `AgentCard`, `AgentCapability` | ✅ | `types.ts` |
 | Ed25519 key generation and signing | ✅ | `signing.ts` |
+| `DelegationToken` (cryptographic) | ✅ | `delegation.ts` |
 | W3C DID Document | ❌ | future |
 | `did:key`, `did:web` | ❌ | future |
 | `AutonomyLevel` + `CapabilityDelegation` | ❌ | future |
-| `DelegationToken` (cryptographic) | ⚠️ Ed25519 done, token model pending | |
 
 ### Layer 2 — Discovery
 
@@ -109,9 +109,9 @@ Last updated: 2026-03-13
 | Feature | Status | Module |
 |:--------|:------:|:-------|
 | HTTP transport (`ROARClient`) | ✅ | `client.ts` |
-| WebSocket transport | ❌ | future |
+| WebSocket transport (client) | ✅ | `websocket.ts` |
+| Native HTTP router (SSE + WS server + rate limit) | ✅ | `router.ts` |
 | stdio transport | ❌ | future |
-| FastAPI-equivalent Express/Fastify router | ❌ | future |
 
 ### Layer 4 — Exchange
 
@@ -127,8 +127,9 @@ Last updated: 2026-03-13
 | Feature | Status | Module |
 |:--------|:------:|:-------|
 | `EventBus` + `Subscription` + `StreamFilter` | ✅ | `streaming.ts` |
+| SSE via native HTTP router | ✅ | `router.ts` |
+| `IdempotencyGuard` | ✅ | `dedup.ts` |
 | AIMD backpressure | ⚠️ Drop-oldest only, not full AIMD | `streaming.ts` |
-| `IdempotencyGuard` | ❌ | future |
 
 ---
 
@@ -150,12 +151,12 @@ All 30 checks must pass before claiming ROAR compliance.
 
 ## Next SDK Priorities
 
-### TypeScript (High Priority)
+### TypeScript (Medium Priority)
 
-1. `DelegationToken` model (port from Python)
-2. WebSocket transport
-3. `IdempotencyGuard`
-4. FastAPI-equivalent router (Express or native http)
+1. stdio transport
+2. `did:key`, `did:web` (requires base58 encoder)
+3. Full AIMD backpressure controller (replace drop-oldest)
+4. SQLite-backed persistent directory
 
 ### Python (Medium Priority)
 

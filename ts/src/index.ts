@@ -57,3 +57,20 @@ export {
   verifyEd25519,
 } from "./signing.js";
 export type { Ed25519KeyPair } from "./signing.js";
+
+// Delegation tokens (Layer 1 — capability grants)
+export {
+  issueToken,
+  verifyToken,
+  isTokenValid,
+  tokenGrants,
+  consumeToken,
+} from "./delegation.js";
+export type { DelegationToken } from "./delegation.js";
+
+// Idempotency / replay protection
+export { IdempotencyGuard } from "./dedup.js";
+
+// Router (SSE + WebSocket + rate limiting)
+export { createROARRouter } from "./router.js";
+export type { ROARRouter, ROARRouterOptions } from "./router.js";
