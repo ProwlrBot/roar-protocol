@@ -57,6 +57,10 @@ from .types import (
 from .client import ROARClient
 from .server import ROARServer
 from .streaming import EventBus, StreamFilter, Subscription
+from .signing import generate_keypair, sign_ed25519, verify_ed25519
+from .delegation import DelegationToken, issue_token, verify_token
+from .adapters import ACPAdapter
+from .hub import ROARHub
 
 __all__ = [
     # Layer 1
@@ -78,11 +82,21 @@ __all__ = [
     # Adapters
     "MCPAdapter",
     "A2AAdapter",
-    # Client / Server
+    "ACPAdapter",
+    # Client / Server / Hub
     "ROARClient",
     "ROARServer",
+    "ROARHub",
     # Streaming
     "EventBus",
     "StreamFilter",
     "Subscription",
+    # Ed25519 signing
+    "generate_keypair",
+    "sign_ed25519",
+    "verify_ed25519",
+    # Delegation tokens
+    "DelegationToken",
+    "issue_token",
+    "verify_token",
 ]

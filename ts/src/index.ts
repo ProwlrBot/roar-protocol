@@ -46,3 +46,11 @@ export { ROARClient } from "./client.js";
 // Streaming (Layer 5)
 export { EventBus, Subscription, StreamFilter } from "./streaming.js";
 export type { StreamFilterSpec } from "./streaming.js";
+
+// Ed25519 signing (Layer 1 — asymmetric)
+export {
+  generateEd25519KeyPair,
+  signEd25519,
+  verifyEd25519,
+} from "./signing.js";
+export type { Ed25519KeyPair } from "./signing.js";

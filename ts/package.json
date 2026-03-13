@@ -12,11 +12,20 @@
   },
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "example:server": "tsx ../examples/ts/echo_server.ts",
+    "example:client": "tsx ../examples/ts/client.ts"
   },
-  "keywords": ["roar", "protocol", "agent", "ai", "sdk"],
+  "keywords": [
+    "roar",
+    "protocol",
+    "agent",
+    "ai",
+    "sdk"
+  ],
   "license": "MIT",
   "devDependencies": {
+    "tsx": "^4.21.0",
     "typescript": "^5.4.0"
   }
 }
