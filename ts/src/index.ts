@@ -91,7 +91,15 @@ export { detectProtocol, normalizeToROAR } from "./detect.js";
 export type { DetectedProtocol } from "./detect.js";
 
 // Autonomy levels + capability delegation (Layer 1)
-export { AutonomyLevel, CapabilityDelegation } from "./autonomy.js";
+export {
+  AutonomyLevel,
+  CapabilityDelegation,
+  autonomyCanAct,
+  autonomyRequiresApproval,
+  tokenExpired,
+  tokenValid,
+  tokenAllows,
+} from "./autonomy.js";
 export type { RuntimeToken } from "./autonomy.js";
 
 // Discovery cache — TTL + LRU (Layer 2)
