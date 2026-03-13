@@ -93,6 +93,14 @@ export class SqliteAgentDirectory {
     this._db.close();
   }
 
+  /**
+   * Explicit resource management support (ES2023 `using` keyword).
+   * `using dir = new SqliteAgentDirectory()` auto-closes on scope exit.
+   */
+  [Symbol.dispose](): void {
+    this.close();
+  }
+
   private _rowToEntry(row: {
     card_json: string;
     registered_at: number;

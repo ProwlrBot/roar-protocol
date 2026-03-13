@@ -12,7 +12,6 @@
  *   5 — Stream:     StreamEventType, StreamEvent
  */
 
-import { randomBytes } from "crypto";
 
 // ---------------------------------------------------------------------------
 // Layer 1: Identity
@@ -157,18 +156,35 @@ export interface ROARMessage {
   timestamp: number; // unix timestamp (float)
 }
 
-/** Parse a raw wire JSON object into a ROARMessage. Wire uses "from"/"to". */
+const VALID_INTENTS: ReadonlySet<string> = new Set(Object.values(MessageIntent));
+
+/**
+ * Parse and validate a raw wire JSON object into a ROARMessage.
+ * Throws if required fields are missing or the intent is unrecognised.
+ * Wire uses "from"/"to" keys; internal representation uses from_identity/to_identity.
+ */
 export function messageFromWire(raw: Record<string, unknown>): ROARMessage {
+  if (typeof raw["id"] !== "string" || !raw["id"])
+    throw new TypeError("ROARMessage: missing or invalid 'id'");
+  if (typeof raw["intent"] !== "string" || !VALID_INTENTS.has(raw["intent"]))
+    throw new TypeError(`ROARMessage: invalid intent '${String(raw["intent"])}'`);
+  if (typeof raw["from"] !== "object" || !raw["from"] || Array.isArray(raw["from"]))
+    throw new TypeError("ROARMessage: missing or invalid 'from'");
+  if (typeof raw["to"] !== "object" || !raw["to"] || Array.isArray(raw["to"]))
+    throw new TypeError("ROARMessage: missing or invalid 'to'");
+  if (typeof raw["timestamp"] !== "number")
+    throw new TypeError("ROARMessage: 'timestamp' must be a number");
+
   return {
-    roar: (raw["roar"] as string) ?? "1.0",
-    id: raw["id"] as string,
+    roar: typeof raw["roar"] === "string" ? raw["roar"] : "1.0",
+    id: raw["id"],
     from_identity: raw["from"] as AgentIdentity,
     to_identity: raw["to"] as AgentIdentity,
     intent: raw["intent"] as MessageIntent,
     payload: (raw["payload"] as Record<string, unknown>) ?? {},
     context: (raw["context"] as Record<string, unknown>) ?? {},
     auth: (raw["auth"] as Record<string, unknown>) ?? {},
-    timestamp: raw["timestamp"] as number,
+    timestamp: raw["timestamp"],
   };
 }
 
@@ -218,7 +234,13 @@ export interface StreamEvent {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Generate a hex string of n bytes. */
+/**
+ * Generate a hex string of n random bytes.
+ * Uses globalThis.crypto.getRandomValues — works in browsers, Deno,
+ * Cloudflare Workers, Bun, and Node 18+ without any import.
+ */
 export function randomHex(bytes: number): string {
-  return randomBytes(bytes).toString("hex");
+  const buf = new Uint8Array(bytes);
+  globalThis.crypto.getRandomValues(buf);
+  return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
 }
