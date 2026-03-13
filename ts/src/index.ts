@@ -74,6 +74,9 @@ export { IdempotencyGuard } from "./dedup.js";
 // stdio transport (Layer 3 — newline-delimited JSON over stdin/stdout)
 export { stdioSend } from "./stdio.js";
 
+// SQLite-backed persistent directory (Layer 2)
+export { SqliteAgentDirectory } from "./sqlite_directory.js";
+
 // Router (SSE + WebSocket + rate limiting)
 export { createROARRouter } from "./router.js";
 export type { ROARRouter, ROARRouterOptions } from "./router.js";

@@ -100,7 +100,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | Feature | Status | Module |
 |:--------|:------:|:-------|
 | In-memory `AgentDirectory` | ✅ | `types.ts` |
-| SQLite-backed persistent directory | ❌ | future |
+| SQLite-backed persistent directory | ✅ | `sqlite_directory.ts` |
 | `DiscoveryCache` | ❌ | future |
 | Hub federation | ❌ | future |
 
@@ -154,8 +154,7 @@ All 30 checks must pass before claiming ROAR compliance.
 ### TypeScript (Medium Priority)
 
 1. `did:key`, `did:web` (requires base58 encoder)
-2. SQLite-backed persistent directory
-3. Protocol auto-detection adapter
+2. Protocol auto-detection adapter
 
 ### Python (Medium Priority)
 
