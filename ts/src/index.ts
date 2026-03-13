@@ -71,6 +71,9 @@ export type { DelegationToken } from "./delegation.js";
 // Idempotency / replay protection
 export { IdempotencyGuard } from "./dedup.js";
 
+// stdio transport (Layer 3 — newline-delimited JSON over stdin/stdout)
+export { stdioSend } from "./stdio.js";
+
 // Router (SSE + WebSocket + rate limiting)
 export { createROARRouter } from "./router.js";
 export type { ROARRouter, ROARRouterOptions } from "./router.js";
