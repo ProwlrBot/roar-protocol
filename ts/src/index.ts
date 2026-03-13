@@ -43,6 +43,9 @@ export type { ROARServerOptions } from "./server.js";
 // Client (Layer 3)
 export { ROARClient } from "./client.js";
 
+// WebSocket transport (Layer 3)
+export { ROARWebSocket } from "./websocket.js";
+
 // Streaming (Layer 5)
 export { EventBus, Subscription, StreamFilter } from "./streaming.js";
 export type { StreamFilterSpec } from "./streaming.js";

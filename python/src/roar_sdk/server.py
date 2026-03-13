@@ -108,8 +108,34 @@ class ROARServer:
     async def handle_message(self, msg: ROARMessage) -> ROARMessage:
         """Dispatch an incoming message to the registered handler.
 
+        If the message carries a delegation token in context["delegation_token"],
+        it is verified and consumed (use_count incremented). Messages with an
+        exhausted or invalid token are rejected before reaching the handler.
+
         Returns an error response if no handler is registered.
         """
+        # Delegation token enforcement
+        raw_token = msg.context.get("delegation_token")
+        if raw_token:
+            from .delegation import DelegationToken, verify_token
+            try:
+                token = DelegationToken.model_validate(raw_token)
+            except Exception:
+                return ROARMessage(
+                    **{"from": self._identity, "to": msg.from_identity},
+                    intent=MessageIntent.RESPOND,
+                    payload={"error": "invalid_delegation_token", "message": "Malformed delegation token."},
+                    context={"in_reply_to": msg.id},
+                )
+            if not token.is_valid():
+                return ROARMessage(
+                    **{"from": self._identity, "to": msg.from_identity},
+                    intent=MessageIntent.RESPOND,
+                    payload={"error": "delegation_token_exhausted", "message": "Token expired or use limit reached."},
+                    context={"in_reply_to": msg.id},
+                )
+            token.consume()
+
         handler = self._handlers.get(msg.intent)
         if handler is None:
             logger.warning("No handler for intent '%s' from %s", msg.intent, msg.from_identity.did)

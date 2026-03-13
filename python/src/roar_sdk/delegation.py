@@ -67,6 +67,16 @@ class DelegationToken(BaseModel):
         """Check if this token grants a specific capability."""
         return self.is_valid() and capability in self.capabilities
 
+    def consume(self) -> bool:
+        """Record one use of this token. Returns False if the token is exhausted.
+
+        Call this every time the token is accepted so max_uses is enforced.
+        """
+        if not self.is_valid():
+            return False
+        self.use_count += 1
+        return True
+
     def _signing_body(self) -> bytes:
         """Canonical body for signing — deterministic, sorted keys."""
         body = json.dumps(
