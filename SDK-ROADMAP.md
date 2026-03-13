@@ -11,7 +11,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | Layer | Spec | Python SDK | TypeScript SDK |
 |:------|:----:|:----------:|:--------------:|
 | 1 — Identity | ✅ | ✅ Complete | ✅ Complete |
-| 2 — Discovery | ✅ | ✅ Complete | ⚠️ In-memory only |
+| 2 — Discovery | ✅ | ✅ Complete | ⚠️ Partial (no Hub/cache) |
 | 3 — Connect | ✅ | ✅ Complete | ✅ Complete |
 | 4 — Exchange | ✅ | ✅ Complete | ✅ Complete |
 | 5 — Stream | ✅ | ✅ Complete | ✅ Complete |
