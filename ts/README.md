@@ -48,7 +48,7 @@ const receiver = createIdentity("Bob",  { agentType: "tool",  capabilities: ["se
 const msg = createMessage(
   sender,
   receiver,
-  MessageIntent.TASK,
+  MessageIntent.EXECUTE,
   { text: "Summarize the ROAR spec." },
 );
 
@@ -61,7 +61,7 @@ const ok = verifyMessage(msg, secret); // true
 
 // 5. Send over HTTP
 const client = new ROARClient({
-  ...defaultConnectionConfig,
+  ...defaultConnectionConfig(),
   url: "http://localhost:8080",
 });
 const response = await client.send(msg);
@@ -142,15 +142,18 @@ const roarMsg = normalizeToROAR(incomingPayload, senderIdentity, receiverIdentit
 ## Server
 
 ```typescript
-import { ROARServer } from "@roar-protocol/sdk";
+import { createIdentity, ROARServer, MessageIntent } from "@roar-protocol/sdk";
 
-const server = new ROARServer({
+const identity = createIdentity("MyAgent", { agentType: "agent", capabilities: ["search"] });
+const server = new ROARServer(identity, {
   port: 8080,
-  secret: process.env.ROAR_SECRET,
-  onMessage: async (msg) => {
-    console.log("Received:", msg.intent, msg.payload);
-    return { status: "ok" };
-  },
+  signingSecret: process.env.ROAR_SECRET,
+});
+
+// Register a handler per intent
+server.on(MessageIntent.EXECUTE, async (msg) => {
+  console.log("Task received:", msg.payload);
+  return createMessage(identity, msg.from_identity, MessageIntent.RESPOND, { status: "ok" });
 });
 
 await server.start();
@@ -163,11 +166,10 @@ import { IdempotencyGuard } from "@roar-protocol/sdk";
 
 const guard = new IdempotencyGuard({ windowSeconds: 300, maxSize: 10_000 });
 
-if (guard.seen(msg.id)) {
-  // duplicate — discard
+if (guard.is_duplicate(msg.id)) {
+  // replay detected — discard
 } else {
-  guard.record(msg.id);
-  // process msg
+  // first time seen — process msg (key auto-recorded by is_duplicate)
 }
 ```
 
