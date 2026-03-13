@@ -211,7 +211,18 @@ export function createROARRouter(
   function _checkAuth(req: http.IncomingMessage): boolean {
     if (!authToken) return true;
     const authHeader = req.headers["authorization"] ?? "";
-    return authHeader === `Bearer ${authToken}`;
+    const expected = `Bearer ${authToken}`;
+    // Use timingSafeEqual to prevent timing oracle attacks on the secret token.
+    // Pad/truncate both sides to the same length so the comparison is always
+    // constant-time regardless of prefix match length.
+    try {
+      const a = Buffer.from(authHeader);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length) return false;
+      return crypto.timingSafeEqual(a, b);
+    } catch {
+      return false;
+    }
   }
 
   // ── HTTP request handler ──────────────────────────────────────────────────
@@ -384,7 +395,17 @@ export function createROARRouter(
 
         // Auth frame: {"type": "auth", "token": "..."}
         if (!authenticated) {
-          if (raw["type"] === "auth" && raw["token"] === authToken) {
+          // Use timingSafeEqual to prevent timing oracle attacks on the secret.
+          const supplied = typeof raw["token"] === "string" ? raw["token"] as string : "";
+          let tokenMatch = false;
+          try {
+            const a = Buffer.from(supplied);
+            const b = Buffer.from(authToken);
+            tokenMatch = a.length === b.length && crypto.timingSafeEqual(a, b);
+          } catch {
+            tokenMatch = false;
+          }
+          if (raw["type"] === "auth" && tokenMatch) {
             authenticated = true;
             wsSendText(socket, JSON.stringify({ type: "auth_ok" }));
           } else {
