@@ -121,7 +121,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | `ROARMessage` + 7 intents | ✅ | `types.ts` |
 | HMAC-SHA256 signing (`pythonJsonDumps` compatible) | ✅ | `message.ts` |
 | Ed25519 signing/verification | ✅ | `signing.ts` |
-| Protocol auto-detection | ❌ | future |
+| Protocol auto-detection | ✅ | `detect.ts` |
 
 ### Layer 5 — Stream
 
@@ -151,10 +151,6 @@ All 30 checks must pass before claiming ROAR compliance.
 ---
 
 ## Next SDK Priorities
-
-### TypeScript (Medium Priority)
-
-1. Protocol auto-detection adapter
 
 ### Python (Medium Priority)
 
