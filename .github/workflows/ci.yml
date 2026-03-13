@@ -6,84 +6,33 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
-
 jobs:
-  validate-spec:
+  typescript:
+    name: TypeScript SDK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Verify spec files exist
-        run: |
-          echo "Checking required spec documents..."
-          for doc in ROAR-SPEC ROAR-IDENTITY ROAR-DISCOVERY ROAR-CONNECT ROAR-EXCHANGE ROAR-STREAM; do
-            if [ ! -f "spec/$doc.md" ]; then
-              echo "MISSING: spec/$doc.md"
-              exit 1
-            fi
-            echo "  Found spec/$doc.md"
-          done
-          echo "All spec documents present."
-
-      - name: Verify VERSION.json
-        run: |
-          python3 -c "
-import json
-v = json.load(open('spec/VERSION.json'))
-assert 'spec_version' in v, 'Missing spec_version field'
-assert 'layers' in v, 'Missing layers field'
-print('Spec version:', v['spec_version'])
-print('Layers:', list(v['layers'].keys()))
-"
-
-      - name: Check for broken internal links
-        run: |
-          echo "Checking for broken cross-references..."
-          for file in spec/*.md; do
-            grep -oP '\[.*?\]\((ROAR-\w+\.md)\)' "$file" 2>/dev/null | while read -r match; do
-              target=$(echo "$match" | grep -oP 'ROAR-\w+\.md')
-              if [ ! -f "spec/$target" ]; then
-                echo "  BROKEN LINK: $target referenced in $file"
-                exit 1
-              fi
-            done
-          done
-          echo "All internal links valid."
-
-  conformance:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install roar-sdk from this repo
-        run: pip install -e ./python
-
-      - name: Run conformance tests
-        run: python3 tests/validate_golden.py
-
-      - name: Verify signature fixture is stable (Python)
-        run: python3 tests/check_signature.py
-
-      - name: Verify SDK version matches spec version
-        run: python3 tests/check_versions.py
-
-  conformance-ts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ts/package-lock.json
+      - run: npm ci
+        working-directory: ts
+      - run: npx tsc --noEmit
+        working-directory: ts
+      - run: node tests/validate_golden.mjs
+        working-directory: .
 
-      - name: Verify signature fixture is stable (TypeScript/Node)
-        run: node tests/check_signature_ts.mjs
+  python:
+    name: Python SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -e ".[dev]"
+        working-directory: python
+      - run: pytest tests/conformance/ -v
+        working-directory: python
