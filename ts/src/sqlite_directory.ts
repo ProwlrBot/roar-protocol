@@ -99,11 +99,12 @@ export class SqliteAgentDirectory {
     last_seen: number;
     hub_url: string;
   }): DiscoveryEntry {
-    return {
-      agent_card: JSON.parse(row.card_json) as AgentCard,
-      registered_at: row.registered_at,
-      last_seen: row.last_seen,
-      hub_url: row.hub_url,
-    };
+    let agent_card: AgentCard;
+    try {
+      agent_card = JSON.parse(row.card_json) as AgentCard;
+    } catch {
+      throw new Error(`SqliteAgentDirectory: corrupt card_json in database row`);
+    }
+    return { agent_card, registered_at: row.registered_at, last_seen: row.last_seen, hub_url: row.hub_url };
   }
 }

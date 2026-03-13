@@ -46,7 +46,16 @@ export class ROARClient {
         },
         (res) => {
           let data = "";
-          res.on("data", (chunk) => (data += chunk));
+          let dataBytes = 0;
+          const MAX_RESPONSE_BYTES = 1 * 1024 * 1024; // 1 MiB
+          res.on("data", (chunk: Buffer | string) => {
+            dataBytes += typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
+            if (dataBytes > MAX_RESPONSE_BYTES) {
+              res.destroy(new Error(`Response from ${url} exceeded 1 MiB`));
+              return;
+            }
+            data += chunk;
+          });
           res.on("end", () => {
             if (res.statusCode && res.statusCode >= 400) {
               reject(
