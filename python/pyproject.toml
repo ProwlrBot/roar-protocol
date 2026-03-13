@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "roar-sdk"
-version = "0.2.0"
+version = "0.2.1"
 description = "ROAR Protocol — Python SDK. Standalone implementation of the 5-layer agent communication standard."
 readme = "README.md"
 license = { text = "Apache-2.0" }
