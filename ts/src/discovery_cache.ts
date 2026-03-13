@@ -99,11 +99,9 @@ export class DiscoveryCache {
     return this._cache.delete(did);
   }
 
-  /** Remove all entries and reset stats. */
+  /** Remove all cached entries. Stats counters are preserved (matches Python). */
   clear(): void {
     this._cache.clear();
-    this._hits = 0;
-    this._misses = 0;
   }
 
   /**
