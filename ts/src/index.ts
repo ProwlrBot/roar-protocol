@@ -85,6 +85,8 @@ export type { ROARRouter, ROARRouterOptions } from "./router.js";
 // DID methods (Layer 1 — identity)
 export { publicKeyToDidKey, didKeyToPublicKey } from "./did_key.js";
 export { urlToDidWeb, didWebToUrl } from "./did_web.js";
+export { DIDDocument } from "./did_document.js";
+export type { VerificationMethod, ServiceEndpoint, DIDDocumentDict } from "./did_document.js";
 
 // Protocol auto-detection (Layer 4)
 export { detectProtocol, normalizeToROAR } from "./detect.js";

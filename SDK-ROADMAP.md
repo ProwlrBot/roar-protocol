@@ -91,7 +91,7 @@ Last updated: 2026-03-13 (TypeScript gaps closed)
 | `AgentCard`, `AgentCapability` | ✅ | `types.ts` |
 | Ed25519 key generation and signing | ✅ | `signing.ts` |
 | `DelegationToken` (cryptographic) | ✅ | `delegation.ts` |
-| W3C DID Document | ❌ | future |
+| W3C DID Document | ✅ | `did_document.ts` |
 | `did:key` ephemeral identities | ✅ | `did_key.ts` |
 | `did:web` DNS-bound identities | ✅ | `did_web.ts` |
 | `AutonomyLevel` + `CapabilityDelegation` | ✅ | `autonomy.ts` |
