@@ -1,0 +1,22 @@
+{
+  "name": "@roar-protocol/sdk",
+  "version": "0.2.0",
+  "description": "TypeScript SDK for the ROAR Protocol (Real-time Open Agent Runtime)",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["roar", "protocol", "agent", "ai", "sdk"],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

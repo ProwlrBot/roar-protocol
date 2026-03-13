@@ -58,7 +58,26 @@ All 4 conformance tests passed.
 
 ## Running TypeScript Conformance
 
-TypeScript conformance tests are pending SDK alignment. See [SDK-ROADMAP.md](../SDK-ROADMAP.md) for status.
+Requires Node.js 18+. No npm install needed — uses only Node built-ins.
+
+```bash
+node tests/validate_golden.mjs
+```
+
+Expected output:
+
+```
+identity.json    ✅
+message.json     ✅
+stream-event.json ✅
+signature.json   ✅
+
+All 22 conformance checks passed. ✅
+```
+
+The signature check verifies that the TypeScript `pythonJsonDumps` function produces
+the same canonical JSON as Python's `json.dumps(sort_keys=True)`, including the
+float-formatting rule (`1710000000` → `1710000000.0`).
 
 ---
 

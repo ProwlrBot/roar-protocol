@@ -31,14 +31,11 @@ async def send_message(
         return await http_send(config, message)
 
     if config.transport == TransportType.WEBSOCKET:
-        raise NotImplementedError(
-            "WebSocket transport is not yet implemented in the standalone SDK. "
-            "Use HTTP transport or install ProwlrBot for the full SDK."
-        )
+        from .websocket import ws_send
+        return await ws_send(config, message)
 
     if config.transport == TransportType.STDIO:
-        raise NotImplementedError(
-            "stdio transport is not yet implemented in the standalone SDK."
-        )
+        from .stdio import stdio_send
+        return await stdio_send(message)
 
     raise NotImplementedError(f"Transport not supported: {config.transport}")

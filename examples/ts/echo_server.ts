@@ -29,7 +29,7 @@ import {
   createMessage,
   signMessage,
   verifyMessage,
-} from "../../packages/roar-sdk-ts/src/index";
+} from "../../ts/src/index.js";
 
 const PORT = 8089;
 const SHARED_SECRET = "roar-example-shared-secret";

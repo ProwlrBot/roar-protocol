@@ -23,7 +23,9 @@ import {
   createMessage,
   signMessage,
   verifyMessage,
-} from "../../packages/roar-sdk-ts/src/index";
+  messageToWire,
+  messageFromWire,
+} from "../../ts/src/index.js";
 
 const SERVER_URL = "http://127.0.0.1:8089/roar/message";
 const SHARED_SECRET = "roar-example-shared-secret";
@@ -96,7 +98,7 @@ function postJson(url: string, body: unknown): Promise<unknown> {
 
 (async () => {
   try {
-    const response = (await postJson(SERVER_URL, msg)) as ROARMessage;
+    const response = messageFromWire((await postJson(SERVER_URL, messageToWire(msg))) as Record<string, unknown>);
 
     console.log("\n← Response received:");
     console.log("  intent: ", response.intent);
