@@ -7,17 +7,16 @@ Two files. One runs a server, one runs a client.
 ## Requirements
 
 ```bash
-git clone https://github.com/ProwlrBot/prowlrbot.git
-cd prowlrbot
-pip install -e ".[dev]"
-pip install uvicorn httpx
+git clone https://github.com/kdairatchi/roar-protocol.git
+cd roar-protocol/python
+pip install -e ".[dev]"   # from the roar-protocol/python/ directory
 ```
 
 ---
 
 ## Option A: Echo Server + Client (self-contained)
 
-The echo server is a tiny standalone ROAR agent. No ProwlrBot installation required beyond the pip install above.
+The echo server is a tiny standalone ROAR agent. No external platform required beyond the pip install above.
 
 **Terminal 1 — start the server:**
 

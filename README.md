@@ -39,17 +39,17 @@ Think TCP/IP, but for AI agents.
 
 ## Scope
 
-**This repo is the protocol specification.** It defines:
+**This repo contains the protocol specification and the reference SDKs.** It defines:
 
 - The canonical type definitions (wire format, field names, enums)
 - JSON Schemas — the contract that all SDK implementations must conform to
 - Conformance tests — language-agnostic golden fixtures
-- A roadmap for SDK implementations
+- The Python reference SDK (`python/`)
+- The TypeScript reference SDK (`ts/`)
 
 **What this repo is not:**
 
-- A Python package (the reference implementation lives in ProwlrBot)
-- A production-ready SDK (see [SDK-ROADMAP.md](SDK-ROADMAP.md) for status)
+- A production-ready platform (see [SDK-ROADMAP.md](SDK-ROADMAP.md) for stability status)
 - A replacement for MCP, A2A, or ACP — ROAR bridges all three
 
 ---
@@ -58,8 +58,8 @@ Think TCP/IP, but for AI agents.
 
 | SDK | Status | Location |
 |:----|:-------|:---------|
-| **Python** | Reference implementation — 70% complete | [`prowlrbot/src/prowlrbot/protocols/`](https://github.com/ProwlrBot/prowlrbot/tree/main/src/prowlrbot/protocols) |
-| **TypeScript** | Experimental — types diverge from spec | [`prowlrbot/packages/roar-sdk-ts/`](https://github.com/ProwlrBot/prowlrbot/tree/main/packages/roar-sdk-ts) |
+| **Python** | Reference implementation — `roar-sdk` on PyPI | [`python/`](python/) in this repo |
+| **TypeScript** | Reference implementation — `@roar-protocol/sdk` on npm | [`ts/`](ts/) in this repo |
 
 See [SDK-ROADMAP.md](SDK-ROADMAP.md) for open tasks, divergence issues, and what needs work.
 
@@ -90,7 +90,7 @@ Layers are independently adoptable. You can use Identity + Discovery without the
 **Step 1 — Give your agent an identity**
 
 ```python
-from prowlrbot.protocols.roar import AgentIdentity
+from roar_sdk import AgentIdentity
 
 agent = AgentIdentity(
     display_name="my-agent",
@@ -103,7 +103,7 @@ print(agent.did)  # did:roar:agent:my-agent-a1b2c3d4
 **Step 2 — Publish an Agent Card so others can find you**
 
 ```python
-from prowlrbot.protocols.roar import AgentCard, AgentDirectory
+from roar_sdk import AgentCard, AgentDirectory
 
 card = AgentCard(
     identity=agent,
@@ -117,7 +117,7 @@ directory.register(card)
 **Step 3 — Choose an intent and build a message**
 
 ```python
-from prowlrbot.protocols.roar import ROARMessage, MessageIntent
+from roar_sdk import ROARMessage, MessageIntent
 
 msg = ROARMessage(
     **{"from": sender_identity, "to": receiver_identity},
@@ -133,7 +133,7 @@ msg.sign(secret="shared-secret")
 # msg.auth → {"signature": "hmac-sha256:...", "timestamp": 1710000000.0}
 
 # Send over HTTP
-from prowlrbot.protocols.sdk.client import ROARClient
+from roar_sdk import ROARClient
 client = ROARClient(sender_identity, signing_secret="shared-secret")
 response = await client.send_remote(
     to_agent_id=receiver_identity.did,
@@ -145,7 +145,7 @@ response = await client.send_remote(
 **Step 5 — Handle messages on the server**
 
 ```python
-from prowlrbot.protocols.sdk.server import ROARServer
+from roar_sdk import ROARServer
 
 server = ROARServer(receiver_identity, port=8089)
 
@@ -270,7 +270,7 @@ See [tests/README.md](tests/README.md) for how to run conformance tests against 
 |:--------|:-------------|
 | [examples/python/echo_server.py](examples/python/echo_server.py) | Minimal ROARServer echoing DELEGATE messages |
 | [examples/python/client.py](examples/python/client.py) | ROARClient discovering the server and sending a message |
-| [examples/python/README.md](examples/python/README.md) | How to run both against ProwlrBot or standalone |
+| [examples/python/README.md](examples/python/README.md) | How to run both standalone or against a remote ROAR server |
 
 ---
 

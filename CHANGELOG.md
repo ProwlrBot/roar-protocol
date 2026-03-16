@@ -1,8 +1,61 @@
 # Changelog
 
-All notable changes to the ROAR Protocol specification are documented here.
+All notable changes to the ROAR Protocol specification and reference SDKs are documented here.
 
-Format: `[spec_version] — date — description`
+Format: `[version] — date — description`
+
+---
+
+## [Python SDK 0.3.0] — 2026-03-16
+
+### Security (audit fixes)
+
+- Enforce `DelegationToken.max_uses` server-side — tokens with exhausted use counts are now rejected at the server layer, not just flagged by `is_valid()`
+- Timestamp replay window enforced strictly: messages older than 300 seconds are rejected
+- Empty `auth: {}` field now causes the server to return 403 rather than silently passing
+
+### Changed
+
+- `__version__` aligned to `0.3.0` to match `pyproject.toml`
+- Added `py.typed` marker (PEP 561) so mypy and pyright recognise inline type annotations
+
+---
+
+## [TypeScript SDK 0.3.0] — 2026-03-16
+
+### Security (audit fixes, aligned with Python SDK 0.3.0)
+
+- `verifyMessage` now enforces the 300-second replay window
+- Package version bumped from `1.0.0` to `0.3.0` to match spec maturity and Python SDK
+
+### Changed
+
+- Import paths in examples changed from repo-relative paths to `@roar-protocol/sdk` package imports
+
+---
+
+## [Python SDK 0.2.1] — 2026-03-13
+
+### Fixed
+
+- Minor bug fixes in `ROARClient` HTTP error handling
+- `AgentDirectory.search()` now returns an empty list (not `None`) when no agents match
+
+---
+
+## [Python SDK 0.2.0] — 2026-03-12
+
+### Added
+
+- Initial public release of standalone `roar-sdk` Python package
+- `AgentIdentity`, `AgentCard`, `AgentDirectory`, `ROARMessage`, `MessageIntent`
+- `ROARClient` (HTTP), `ROARServer` (FastAPI), `ROARHub`
+- Ed25519 asymmetric signing (`roar_sdk.signing`)
+- `DelegationToken`, `issue_token`, `verify_token`
+- DID method support: `did:roar`, `did:key`, `did:web`
+- `SQLiteAgentDirectory` for persistent discovery
+- `DiscoveryCache`, `IdempotencyGuard`, `AutonomyLevel`
+- MCP, A2A, and ACP protocol adapters
 
 ---
 
@@ -38,6 +91,6 @@ Format: `[spec_version] — date — description`
 - Initial spec: `spec/01-identity.md` through `spec/05-stream.md`
 - `README.md` with 5-layer overview and comparison table
 - `INSTALL.md` — ProwlrBot as reference implementation
-- `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE` (Apache 2.0)
+- `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE` (MIT)
 - `spec/VERSION.json` with spec v0.1.0 declaration
 - CI workflow (`.github/workflows/ci.yml`)
