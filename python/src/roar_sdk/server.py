@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Union, cast
 
 from .did_resolver import DIDResolutionError, resolve_did_to_public_key
 from .streaming import EventBus
@@ -41,7 +41,7 @@ class ROARServer:
         @server.on(MessageIntent.DELEGATE)
         async def handle(msg: ROARMessage) -> ROARMessage:
             return ROARMessage(
-                **{"from": server.identity, "to": msg.from_identity},
+                **cast(Dict[str, Any], {"from": server.identity, "to": msg.from_identity}),
                 intent=MessageIntent.RESPOND,
                 payload={"status": "ok"},
                 context={"in_reply_to": msg.id},
@@ -130,7 +130,7 @@ class ROARServer:
                 token = DelegationToken.model_validate(raw_token)
             except Exception:
                 return ROARMessage(
-                    **{"from": self._identity, "to": msg.from_identity},
+                    **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                     intent=MessageIntent.RESPOND,
                     payload={"error": "invalid_delegation_token", "message": "Malformed delegation token."},
                     context={"in_reply_to": msg.id},
@@ -140,7 +140,7 @@ class ROARServer:
             # Ensures the token was issued to this exact sender — prevents token theft.
             if token.delegate_did != msg.from_identity.did:
                 return ROARMessage(
-                    **{"from": self._identity, "to": msg.from_identity},
+                    **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                     intent=MessageIntent.RESPOND,
                     payload={"error": "delegation_token_unauthorized", "message": "Token was not issued to this agent."},
                     context={"in_reply_to": msg.id},
@@ -151,7 +151,7 @@ class ROARServer:
                 import time
                 if time.time() > token.expires_at:
                     return ROARMessage(
-                        **{"from": self._identity, "to": msg.from_identity},
+                        **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                         intent=MessageIntent.RESPOND,
                         payload={"error": "delegation_token_exhausted", "message": "Token expired or use limit reached."},
                         context={"in_reply_to": msg.id},
@@ -160,7 +160,7 @@ class ROARServer:
             # Atomic use-count check + increment via the configured store.
             if not self._token_store.get_and_increment(token.token_id, token.max_uses):
                 return ROARMessage(
-                    **{"from": self._identity, "to": msg.from_identity},
+                    **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                     intent=MessageIntent.RESPOND,
                     payload={"error": "delegation_token_exhausted", "message": "Token expired or use limit reached."},
                     context={"in_reply_to": msg.id},
@@ -175,7 +175,7 @@ class ROARServer:
                 delegator_public_key = msg.from_identity.public_key
                 if not delegator_public_key:
                     return ROARMessage(
-                        **{"from": self._identity, "to": msg.from_identity},
+                        **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                         intent=MessageIntent.RESPOND,
                         payload={
                             "error": "delegation_unverifiable",
@@ -195,7 +195,7 @@ class ROARServer:
                         exc,
                     )
                     return ROARMessage(
-                        **{"from": self._identity, "to": msg.from_identity},
+                        **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                         intent=MessageIntent.RESPOND,
                         payload={
                             "error": "delegation_unverifiable",
@@ -207,7 +207,7 @@ class ROARServer:
             try:
                 if not verify_token(token, delegator_public_key):
                     return ROARMessage(
-                        **{"from": self._identity, "to": msg.from_identity},
+                        **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                         intent=MessageIntent.RESPOND,
                         payload={
                             "error": "invalid_delegation_signature",
@@ -223,7 +223,7 @@ class ROARServer:
         if handler is None:
             logger.warning("No handler for intent '%s' from %s", msg.intent, msg.from_identity.did)
             return ROARMessage(
-                **{"from": self._identity, "to": msg.from_identity},
+                **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
                 intent=MessageIntent.RESPOND,
                 payload={
                     "error": "unhandled_intent",

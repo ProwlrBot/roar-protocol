@@ -275,8 +275,9 @@ class MCPAdapter:
         from_agent: AgentIdentity,
     ) -> ROARMessage:
         tool_identity = AgentIdentity(display_name=tool_name, agent_type="tool")
+        hdr: Dict[str, Any] = {"from": from_agent, "to": tool_identity}
         return ROARMessage(
-            **{"from": from_agent, "to": tool_identity},
+            **hdr,
             intent=MessageIntent.EXECUTE,
             payload={"action": tool_name, "params": params},
         )
@@ -298,8 +299,9 @@ class A2AAdapter:
         from_agent: AgentIdentity,
         to_agent: AgentIdentity,
     ) -> ROARMessage:
+        hdr: Dict[str, Any] = {"from": from_agent, "to": to_agent}
         return ROARMessage(
-            **{"from": from_agent, "to": to_agent},
+            **hdr,
             intent=MessageIntent.DELEGATE,
             payload=task,
             context={"protocol": "a2a"},

@@ -13,6 +13,7 @@ tests; this test adds Python→TS and TS→Python via golden message exchange).
 import json
 import subprocess
 import sys
+from pathlib import Path
 import time
 
 from roar_sdk import AgentIdentity, MessageIntent, ROARMessage
@@ -93,7 +94,7 @@ result = subprocess.run(
     input=ts_script,
     capture_output=True,
     text=True,
-    cwd="/home/anon/dev/roar-protocol",
+    cwd=str(Path(__file__).resolve().parents[1]),
 )
 if result.returncode != 0:
     print(f"FAIL (TS subprocess): {result.stderr.strip()}")
