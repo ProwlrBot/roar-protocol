@@ -7,3 +7,9 @@ dist/
 build/
 python/dist/
 ts/dist/
+
+# Claude worktrees
+.claude/
+
+# Claude worktrees
+.claude/
