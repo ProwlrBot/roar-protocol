@@ -12,6 +12,10 @@ Format: `[version] — date — description`
 
 - `StrictMessageVerifier` — production-grade reference verifier enforcing scheme allowlist, recipient DID binding, directional timestamp checks (age + future skew), and replay detection via `IdempotencyGuard`
 - `VerificationResult` dataclass with `ok: bool` and `error: str` fields
+- `RedisTokenStore` — multi-worker safe delegation token store using Redis atomic INCR; safe across multiple uvicorn/gunicorn workers. Requires `pip install roar-sdk[redis]`.
+- `sign_agent_card(card, private_key_hex)` — signs an `AgentCard` with Ed25519 and stores the signature on `card.attestation`. Mitigates hub discovery poisoning.
+- `verify_agent_card(card)` — verifies `card.attestation` against the card's own public key.
+- `attestation: Optional[str]` field on `AgentCard` (backwards compatible, `None` by default)
 
 ---
 
@@ -22,6 +26,12 @@ Format: `[version] — date — description`
 - `StrictMessageVerifier` — mirrors Python implementation; exported from `@roar-protocol/sdk`
 - `VerificationResult` and `StrictMessageVerifierOptions` interfaces
 - `tests/check_strict_verifier.mjs` — 8 invariant checks mirroring Python test
+- `ROARHub` — full hub server with challenge-response registration and federation sync/export
+- `ChallengeStore` — one-time nonce store (30s TTL, replay-safe) used by hub registration
+- `RedisTokenStore` — multi-worker safe token store using `ioredis` (optional peer dep)
+- `signAgentCard(card, privateKeyHex)` — Ed25519 attestation for `AgentCard`; mitigates hub discovery poisoning
+- `verifyAgentCard(card)` — verifies `card.attestation` against the card's own public key
+- `attestation?: string` field on `AgentCard` (backwards compatible, `undefined` by default)
 
 ---
 

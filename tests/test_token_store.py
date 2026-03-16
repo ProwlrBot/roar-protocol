@@ -2,9 +2,10 @@
 """Tests for python/src/roar_sdk/token_store.py"""
 
 import threading
+from unittest.mock import MagicMock, patch
 import pytest
 
-from roar_sdk.token_store import InMemoryTokenStore
+from roar_sdk.token_store import InMemoryTokenStore, RedisTokenStore
 
 
 # ---------------------------------------------------------------------------
@@ -98,3 +99,100 @@ class TestInMemoryTokenStore:
         store = InMemoryTokenStore()
         assert store.get_and_increment("tok_once", 1) is True
         assert store.get_and_increment("tok_once", 1) is False
+
+
+# ---------------------------------------------------------------------------
+# RedisTokenStore
+# ---------------------------------------------------------------------------
+
+class TestRedisTokenStore:
+    def test_importerror_when_redis_missing(self):
+        """Calling a method raises ImportError with a helpful message when redis is not installed."""
+        store = RedisTokenStore()  # __init__ must not import redis
+        with patch.dict("sys.modules", {"redis": None}):
+            # Force _client to None so _get_client re-runs the import path
+            store._client = None
+            with pytest.raises(ImportError, match="pip install roar-sdk\\[redis\\]"):
+                store.get_and_increment("tok_nored", 1)
+
+    def test_instantiation_does_not_require_redis(self):
+        """RedisTokenStore() must instantiate without importing redis."""
+        # If redis is absent this should still succeed because __init__ is lazy
+        with patch.dict("sys.modules", {"redis": None}):
+            store = RedisTokenStore(
+                redis_url="redis://localhost:6379/0",
+                key_prefix="test:",
+            )
+            assert store._redis_url == "redis://localhost:6379/0"
+            assert store._prefix == "test:"
+            assert store._client is None
+
+    def test_get_and_increment_within_limit(self):
+        """With a mocked redis client, get_and_increment returns True within limit."""
+        redis = pytest.importorskip("redis")
+
+        mock_client = MagicMock()
+        mock_client.incr.return_value = 1  # first use
+        mock_client.get.return_value = "1"
+
+        store = RedisTokenStore(key_prefix="test:")
+        store._client = mock_client  # inject mock
+
+        result = store.get_and_increment("tok_r1", 5)
+        assert result is True
+        mock_client.incr.assert_called_once_with("test:tok_r1")
+        # TTL must be set on first use (newCount == 1)
+        mock_client.expire.assert_called_once_with("test:tok_r1", 86400)
+
+    def test_get_and_increment_exhausted(self):
+        """Returns False when new_count > max_uses."""
+        pytest.importorskip("redis")
+
+        mock_client = MagicMock()
+        mock_client.incr.return_value = 4  # already beyond max_uses=3
+
+        store = RedisTokenStore(key_prefix="test:")
+        store._client = mock_client
+
+        result = store.get_and_increment("tok_r2", 3)
+        assert result is False
+        # TTL must NOT be set — newCount != 1
+        mock_client.expire.assert_not_called()
+
+    def test_get_and_increment_unlimited(self):
+        """max_uses=None always returns True."""
+        pytest.importorskip("redis")
+
+        mock_client = MagicMock()
+        mock_client.incr.return_value = 999
+
+        store = RedisTokenStore(key_prefix="test:")
+        store._client = mock_client
+
+        result = store.get_and_increment("tok_r3", None)
+        assert result is True
+
+    def test_get_count_returns_zero_for_missing_key(self):
+        """get_count returns 0 when Redis returns None."""
+        pytest.importorskip("redis")
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = None
+
+        store = RedisTokenStore(key_prefix="test:")
+        store._client = mock_client
+
+        assert store.get_count("tok_unknown") == 0
+
+    def test_get_count_returns_parsed_int(self):
+        """get_count returns the integer value stored in Redis."""
+        pytest.importorskip("redis")
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = "7"
+
+        store = RedisTokenStore(key_prefix="test:")
+        store._client = mock_client
+
+        assert store.get_count("tok_r4") == 7
+        mock_client.get.assert_called_once_with("test:tok_r4")

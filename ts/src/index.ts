@@ -55,6 +55,8 @@ export {
   generateEd25519KeyPair,
   signEd25519,
   verifyEd25519,
+  signAgentCard,
+  verifyAgentCard,
 } from "./signing.js";
 export type { Ed25519KeyPair } from "./signing.js";
 

@@ -41,6 +41,7 @@ export interface AgentCard {
   endpoints: Record<string, string>;
   declared_capabilities: AgentCapability[];
   metadata: Record<string, unknown>;
+  attestation?: string; // base64url Ed25519 signature over canonical card JSON
 }
 
 // ---------------------------------------------------------------------------

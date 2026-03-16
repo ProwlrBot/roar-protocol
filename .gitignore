@@ -8,8 +8,5 @@ build/
 python/dist/
 ts/dist/
 
-# Claude worktrees
-.claude/
-
-# Claude worktrees
+# Claude internal files
 .claude/

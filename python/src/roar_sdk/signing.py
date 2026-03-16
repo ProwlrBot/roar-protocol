@@ -30,7 +30,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .types import ROARMessage
+    from .types import ROARMessage, AgentCard
 
 _MISSING = (
     "Ed25519 signing requires the 'cryptography' package. "
@@ -107,6 +107,91 @@ def sign_ed25519(msg: "ROARMessage", private_key_hex: str) -> "ROARMessage":
     msg.auth["signature"] = f"ed25519:{sig_b64}"
     msg.auth["public_key"] = public.public_bytes_raw().hex()
     return msg
+
+
+def _card_canonical_body(card: "AgentCard") -> bytes:
+    """Canonical JSON body for AgentCard signing.
+
+    Covers all identity fields except ``attestation`` itself.
+    Keys are sorted alphabetically for deterministic output.
+    """
+    body = json.dumps(
+        {
+            "did": card.identity.did,
+            "capabilities": card.identity.capabilities,
+            "description": card.description,
+            "skills": card.skills,
+            "channels": card.channels,
+            "endpoints": card.endpoints,
+            "declared_capabilities": [
+                cap.model_dump() for cap in card.declared_capabilities
+            ],
+        },
+        sort_keys=True,
+    )
+    return body.encode("utf-8")
+
+
+def sign_agent_card(card: "AgentCard", private_key_hex: str) -> str:
+    """Sign an AgentCard and return the base64url attestation string.
+
+    Sets ``card.attestation`` in-place and returns it.
+
+    Args:
+        card: The AgentCard to sign (mutated in place).
+        private_key_hex: 64-char hex string (32 bytes) from generate_keypair().
+
+    Returns:
+        The base64url-encoded Ed25519 signature string.
+    """
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError:
+        raise ImportError(_MISSING)
+
+    private = Ed25519PrivateKey.from_private_bytes(bytes.fromhex(private_key_hex))
+    body = _card_canonical_body(card)
+    raw_sig = private.sign(body)
+    attestation = base64.urlsafe_b64encode(raw_sig).decode("ascii").rstrip("=")
+    card.attestation = attestation
+    return attestation
+
+
+def verify_agent_card(card: "AgentCard") -> bool:
+    """Verify AgentCard.attestation against the card's identity.public_key.
+
+    Returns False if attestation is missing, public_key is missing, or the
+    signature is invalid.
+
+    Args:
+        card: The AgentCard to verify.
+
+    Returns:
+        True if the attestation is a valid Ed25519 signature over the card.
+    """
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        from cryptography.exceptions import InvalidSignature
+    except ImportError:
+        raise ImportError(_MISSING)
+
+    if not card.attestation:
+        return False
+    key_hex = card.identity.public_key
+    if not key_hex:
+        return False
+
+    b64 = card.attestation
+    padding = (4 - len(b64) % 4) % 4
+    raw_sig = base64.urlsafe_b64decode(b64 + "=" * padding)
+
+    try:
+        public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(key_hex))
+        body = _card_canonical_body(card)
+        public.verify(raw_sig, body)
+        return True
+    except (InvalidSignature, ValueError):
+        return False
 
 
 def verify_ed25519(
