@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 requires-python = ">=3.10"
-dependencies = ["pydantic>=2.0"]
+dependencies = ["pydantic>=2.0", "base58>=1.0"]
 
 [project.optional-dependencies]
 http = ["httpx>=0.25"]
