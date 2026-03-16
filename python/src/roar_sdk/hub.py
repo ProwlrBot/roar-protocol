@@ -8,8 +8,9 @@ A ROAR Hub is a discovery server that:
 
 Hub API endpoints (mounted on a FastAPI app):
 
-  POST /roar/agents/register   — register an AgentCard
-  DELETE /roar/agents/{did}    — unregister
+  POST /roar/agents/register   — begin challenge-response registration
+  POST /roar/agents/challenge  — complete registration with signed proof
+  DELETE /roar/agents/{did}    — unregister (requires signed proof)
   GET  /roar/agents            — list all agents
   GET  /roar/agents/{did}      — lookup single agent
   GET  /roar/agents/search?capability=X — search by capability
@@ -27,13 +28,33 @@ Usage::
 
 from __future__ import annotations
 
+import base64
 import logging
 import time
 from typing import List, Optional
 
+from .hub_auth import ChallengeStore
 from .types import AgentCard, AgentDirectory, AgentIdentity, DiscoveryEntry
 
+# FastAPI / uvicorn are optional (server extra).  Import them at module level so
+# that ``from __future__ import annotations`` does not turn type hints inside
+# serve() into unresolvable forward-reference strings.
+try:
+    from fastapi import FastAPI, HTTPException, Request  # type: ignore[import]
+    from fastapi.responses import JSONResponse  # type: ignore[import]
+    import uvicorn  # type: ignore[import]
+    _FASTAPI_AVAILABLE = True
+except ImportError:
+    _FASTAPI_AVAILABLE = False
+    # Provide stubs so that type annotations inside serve() can still be written.
+    # They are only evaluated at runtime when serve() is called, which will raise
+    # ImportError before reaching the annotated functions anyway.
+    Request = None  # type: ignore[assignment,misc]
+
 logger = logging.getLogger(__name__)
+
+# Maximum request body size: 256 KiB
+_MAX_BODY_BYTES = 256 * 1024
 
 
 class ROARHub:
@@ -55,6 +76,7 @@ class ROARHub:
         self._hub_url = hub_id or f"http://{host}:{port}"
         self._directory = AgentDirectory()
         self._peers: List[str] = list(peer_urls or [])
+        self._challenge_store = ChallengeStore()
 
     @property
     def directory(self) -> AgentDirectory:
@@ -69,11 +91,7 @@ class ROARHub:
 
         Requires: pip install 'roar-sdk[server]'
         """
-        try:
-            from fastapi import FastAPI, HTTPException, Request
-            from fastapi.responses import JSONResponse
-            import uvicorn
-        except ImportError:
+        if not _FASTAPI_AVAILABLE:
             raise ImportError(
                 "Hub server requires fastapi and uvicorn. "
                 "Install them: pip install 'roar-sdk[server]'"
@@ -82,23 +100,205 @@ class ROARHub:
         app = FastAPI(title=f"ROAR Hub — {self._hub_url}")
         hub = self
 
-        # ── Agent registration ────────────────────────────────────────────
+        # ── Helpers ───────────────────────────────────────────────────────
+
+        async def _read_bounded_json(request: Request) -> dict:
+            """Read request body with a 256 KiB cap, then parse as JSON."""
+            body = await request.body()
+            if len(body) > _MAX_BODY_BYTES:
+                raise HTTPException(status_code=413, detail="Request body too large")
+            import json as _json
+            try:
+                return _json.loads(body)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+        def _verify_ed25519(public_key_hex: str, signature_str: str, message: str) -> bool:
+            """Verify an Ed25519 signature.
+
+            *signature_str* must be of the form ``ed25519:<base64url>``.
+            *message* is the UTF-8 plaintext that was signed.
+
+            Raises ``ImportError`` if the cryptography package is absent.
+            Raises ``ValueError`` for malformed inputs.
+            Returns True on success, False on bad signature.
+            """
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+            from cryptography.exceptions import InvalidSignature
+
+            if not signature_str.startswith("ed25519:"):
+                raise ValueError("Signature must start with 'ed25519:'")
+            b64_part = signature_str[len("ed25519:"):]
+            # base64url without padding
+            padding = "=" * (-len(b64_part) % 4)
+            try:
+                sig_bytes = base64.urlsafe_b64decode(b64_part + padding)
+            except Exception:
+                raise ValueError("Malformed base64url in signature")
+
+            try:
+                pub_bytes = bytes.fromhex(public_key_hex)
+            except ValueError:
+                raise ValueError("Malformed public key hex")
+
+            pub_key = Ed25519PublicKey.from_public_bytes(pub_bytes)
+            try:
+                pub_key.verify(sig_bytes, message.encode())
+                return True
+            except InvalidSignature:
+                return False
+
+        # ── Agent registration — step 1 ───────────────────────────────────
 
         @app.post("/roar/agents/register")
         async def register(request: Request):
-            body = await request.json()
-            card = AgentCard(**body)
+            """Issue a challenge for proof-of-possession registration.
+
+            Accepts: { "did": str, "public_key": str, "card": {...} }
+            Returns: { "challenge_id": ..., "nonce": ..., "expires_at": ... }
+            """
+            body = await _read_bounded_json(request)
+
+            did = body.get("did", "")
+            public_key = body.get("public_key", "")
+            card_raw = body.get("card", {})
+
+            if not isinstance(did, str) or not did:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "did is required"},
+                )
+            if not isinstance(public_key, str) or not public_key:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "public_key is required — cannot verify identity without key"},
+                )
+
+            try:
+                challenge = hub._challenge_store.issue(did, public_key, card_raw)
+            except RuntimeError as exc:
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": str(exc)},
+                )
+
+            logger.info("Challenge issued for DID: %s  challenge_id: %s", did, challenge.challenge_id)
+            return {
+                "challenge_id": challenge.challenge_id,
+                "nonce": challenge.nonce,
+                "expires_at": challenge.expires_at,
+            }
+
+        # ── Agent registration — step 2 ───────────────────────────────────
+
+        @app.post("/roar/agents/challenge")
+        async def complete_challenge(request: Request):
+            """Verify signed challenge and register the agent card.
+
+            Accepts: { "challenge_id": str, "signature": "ed25519:<base64url>" }
+            Returns: { "registered": true }
+            """
+            body = await _read_bounded_json(request)
+
+            challenge_id = body.get("challenge_id", "")
+            signature = body.get("signature", "")
+
+            if not isinstance(challenge_id, str) or not challenge_id:
+                return JSONResponse(status_code=400, content={"error": "challenge_id is required"})
+            if not isinstance(signature, str) or not signature:
+                return JSONResponse(status_code=400, content={"error": "signature is required"})
+
+            # Consume challenge (deletes it — prevents replay)
+            challenge = hub._challenge_store.consume(challenge_id)
+            if challenge is None:
+                return JSONResponse(status_code=401, content={"error": "challenge_expired"})
+
+            # Verify signature
+            try:
+                valid = _verify_ed25519(challenge.public_key, signature, challenge.nonce)
+            except ImportError:
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "signature_verification_unavailable"},
+                )
+            except ValueError as exc:
+                return JSONResponse(status_code=401, content={"error": f"invalid_signature: {exc}"})
+
+            if not valid:
+                return JSONResponse(status_code=401, content={"error": "invalid_signature"})
+
+            # Register the card stored in the challenge
+            try:
+                card = AgentCard(**challenge.card)
+            except Exception as exc:
+                return JSONResponse(status_code=400, content={"error": f"invalid card: {exc}"})
+
             entry = hub._directory.register(card)
             entry.hub_url = hub._hub_url
-            logger.info("Registered: %s", card.identity.did)
-            return entry.model_dump()
+            logger.info("Registered (challenge ok): %s", card.identity.did)
+            return {"registered": True}
+
+        # ── Agent unregistration — signed proof required ──────────────────
 
         @app.delete("/roar/agents/{did:path}")
-        async def unregister(did: str):
-            removed = hub._directory.unregister(did)
-            if not removed:
+        async def unregister(did: str, request: Request):
+            """Unregister an agent. Requires a signed proof of ownership.
+
+            Accepts: { "did": str, "signature": str, "nonce": str, "timestamp": float }
+            The signature must cover the string: ``delete:{did}:{nonce}:{timestamp}``
+            """
+            body = await _read_bounded_json(request)
+
+            signature = body.get("signature", "")
+            nonce = body.get("nonce", "")
+            timestamp = body.get("timestamp")
+
+            if not signature or not nonce or timestamp is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "signature, nonce, and timestamp are required"},
+                )
+
+            try:
+                timestamp = float(timestamp)
+            except (TypeError, ValueError):
+                return JSONResponse(status_code=400, content={"error": "timestamp must be a number"})
+
+            # Reject stale requests
+            if abs(time.time() - timestamp) > 60:
+                return JSONResponse(status_code=401, content={"error": "timestamp_expired"})
+
+            # Look up the registered entry to get the public key
+            entry = hub._directory.lookup(did)
+            if not entry:
                 raise HTTPException(status_code=404, detail="Agent not found")
+
+            public_key = entry.agent_card.identity.public_key
+            if not public_key:
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "registered card has no public_key — cannot verify delete request"},
+                )
+
+            message = f"delete:{did}:{nonce}:{timestamp}"
+            try:
+                valid = _verify_ed25519(public_key, signature, message)
+            except ImportError:
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "signature_verification_unavailable"},
+                )
+            except ValueError as exc:
+                return JSONResponse(status_code=401, content={"error": f"invalid_signature: {exc}"})
+
+            if not valid:
+                return JSONResponse(status_code=401, content={"error": "invalid_signature"})
+
+            hub._directory.unregister(did)
+            logger.info("Unregistered (signed): %s", did)
             return {"status": "removed", "did": did}
+
+        # ── Agent lookup ──────────────────────────────────────────────────
 
         @app.get("/roar/agents")
         async def list_agents(capability: Optional[str] = None):
@@ -120,7 +320,7 @@ class ROARHub:
         @app.post("/roar/federation/sync")
         async def receive_sync(request: Request):
             """Accept a batch of DiscoveryEntry objects from a peer hub."""
-            body = await request.json()
+            body = await _read_bounded_json(request)
             entries = body.get("entries", [])
             imported = 0
             for raw in entries:
