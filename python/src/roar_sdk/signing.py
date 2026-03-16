@@ -61,7 +61,6 @@ def generate_keypair() -> tuple[str, str]:
 
 def _signing_body_ed25519(msg: "ROARMessage") -> bytes:
     """Canonical JSON body for Ed25519 signing — same as HMAC body."""
-    from .types import ROARMessage  # local import to avoid circular
     body = json.dumps(
         {
             "id": msg.id,

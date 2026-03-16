@@ -34,7 +34,7 @@ import time
 from typing import List, Optional
 
 from .hub_auth import ChallengeStore
-from .types import AgentCard, AgentDirectory, AgentIdentity, DiscoveryEntry
+from .types import AgentCard, AgentDirectory, DiscoveryEntry
 
 # FastAPI / uvicorn are optional (server extra).  Import them at module level so
 # that ``from __future__ import annotations`` does not turn type hints inside

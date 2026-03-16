@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import ipaddress
 import socket
-from typing import Optional
 
 # Private IP ranges to block for SSRF protection
 _PRIVATE_NETWORKS = [

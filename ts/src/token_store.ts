@@ -81,6 +81,7 @@ export class RedisTokenStore implements TokenStore {
     let Redis: { new(url: string): unknown };
     try {
       // Dynamic import keeps ioredis optional
+      // @ts-ignore — ioredis is an optional peer dep, not listed in devDependencies
       const mod = await import("ioredis");
       Redis = mod.default ?? mod;
     } catch {
