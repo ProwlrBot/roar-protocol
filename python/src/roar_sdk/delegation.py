@@ -104,6 +104,7 @@ def issue_token(
     expires_in_seconds: Optional[float] = 3600.0,
     max_uses: Optional[int] = None,
     can_redelegate: bool = False,
+    parent_token: Optional["DelegationToken"] = None,
 ) -> DelegationToken:
     """Issue and sign a delegation token.
 
@@ -115,13 +116,19 @@ def issue_token(
         expires_in_seconds: TTL from now (None = no expiry).
         max_uses: Maximum number of uses (None = unlimited).
         can_redelegate: Whether the delegate can further delegate.
+        parent_token: If this is a re-delegation, the parent token being
+            re-delegated. Its can_redelegate flag must be True.
 
     Returns:
         A signed DelegationToken.
 
     Raises:
+        ValueError: If parent_token.can_redelegate is False.
         ImportError: If cryptography package is not installed.
     """
+    if parent_token is not None and not parent_token.can_redelegate:
+        raise ValueError("Cannot re-delegate: parent token does not permit re-delegation")
+
     try:
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     except ImportError:

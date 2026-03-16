@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, AsyncIterator
+from typing import AsyncIterator
 
 from ..types import ConnectionConfig, ROARMessage, StreamEvent
 

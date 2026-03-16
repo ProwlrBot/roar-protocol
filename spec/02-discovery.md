@@ -2,6 +2,10 @@
 
 > Decentralized agent directory, capability search, agent cards, matchmaking
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119.
+
 ---
 
 ## Overview
@@ -24,13 +28,13 @@ An Agent Card is the public-facing descriptor of an agent. Think of it as a busi
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `identity` | AgentIdentity | Yes | The agent's identity (Layer 1) |
-| `description` | string | Recommended | What this agent does in plain English |
-| `skills` | string[] | Recommended | Named skills this agent has installed |
-| `channels` | string[] | Optional | Communication channels (console, discord, telegram) |
-| `endpoints` | dict | Optional | Connection endpoints (`{"http": "http://...", "ws": "ws://..."}`) |
-| `declared_capabilities` | AgentCapability[] | Optional | Formal capability declarations with schemas |
-| `metadata` | dict | Optional | Arbitrary key-value metadata |
+| `identity` | AgentIdentity | REQUIRED | The agent's identity (Layer 1) |
+| `description` | string | RECOMMENDED | What this agent does in plain English |
+| `skills` | string[] | RECOMMENDED | Named skills this agent has installed |
+| `channels` | string[] | OPTIONAL | Communication channels (console, discord, telegram) |
+| `endpoints` | dict | OPTIONAL | Connection endpoints (`{"http": "http://...", "ws": "ws://..."}`) |
+| `declared_capabilities` | AgentCapability[] | OPTIONAL | Formal capability declarations with schemas |
+| `metadata` | dict | OPTIONAL | Arbitrary key-value metadata |
 
 ---
 

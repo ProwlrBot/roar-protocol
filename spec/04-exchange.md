@@ -2,6 +2,10 @@
 
 > Unified message format, 7 intents, HMAC-SHA256 signing, protocol adapters
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119.
+
 ---
 
 ## Overview
@@ -16,15 +20,15 @@ The Exchange layer defines the universal message format for all ROAR communicati
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `roar` | string | Yes | Protocol version (default: "1.0") |
-| `id` | string | Auto-generated | Unique message ID (`msg_<random>`) |
-| `from` | AgentIdentity | Yes | Sender identity |
-| `to` | AgentIdentity | Yes | Receiver identity |
-| `intent` | MessageIntent | Yes | What the sender wants |
-| `payload` | dict | Yes | Message content |
-| `context` | dict | Optional | Session context, metadata |
-| `auth` | dict | Optional | Authentication (signature, timestamp) |
-| `timestamp` | float | Auto-generated | Unix timestamp |
+| `roar` | string | REQUIRED | Protocol version (default: "1.0") |
+| `id` | string | Auto-generated | Unique message ID (`msg_<random>`); MUST be unique per message |
+| `from` | AgentIdentity | REQUIRED | Sender identity |
+| `to` | AgentIdentity | REQUIRED | Receiver identity |
+| `intent` | MessageIntent | REQUIRED | What the sender wants; MUST be one of the seven defined intents |
+| `payload` | dict | REQUIRED | Message content |
+| `context` | dict | OPTIONAL | Session context, metadata |
+| `auth` | dict | OPTIONAL | Authentication (signature, timestamp); MUST be present on signed messages |
+| `timestamp` | float | Auto-generated | Unix timestamp; MUST be set to the current wall-clock time |
 
 ---
 
@@ -79,23 +83,47 @@ The Exchange layer defines the universal message format for all ROAR communicati
 
 ### HMAC-SHA256
 
+Implementations MUST construct the signing body as a canonical JSON object
+containing exactly the following seven fields, in alphabetical key order:
+
+| Field | Value |
+|-------|-------|
+| `context` | `msg.context` |
+| `from` | `msg.from_identity.did` (the DID string, not the full identity object) |
+| `id` | `msg.id` |
+| `intent` | `msg.intent` |
+| `payload` | `msg.payload` |
+| `timestamp` | `msg.auth["timestamp"]` (the auth timestamp set immediately before signing) |
+| `to` | `msg.to_identity.did` (the DID string, not the full identity object) |
+
+Serialization rules:
+
+- Keys MUST be sorted alphabetically at all nesting levels (recursively).
+- The reference serialization is Python's `json.dumps(..., sort_keys=True, separators=(", ", ": "))`.
+- Array elements within arrays are NOT reordered — `sort_keys` applies only to object keys.
+- For delegation tokens specifically, the `capabilities` array MUST be sorted
+  lexicographically before signing (see spec/schemas/delegation-token.json).
+
 ```python
 canonical = json.dumps(
     {
-        "id": msg.id,
+        "context": msg.context,
         "from": msg.from_identity.did,
-        "to": msg.to_identity.did,
+        "id": msg.id,
         "intent": msg.intent,
         "payload": msg.payload,
-        "context": msg.context,
-        "timestamp": msg.auth.get("timestamp", msg.timestamp),
+        "timestamp": msg.auth.get("timestamp"),
+        "to": msg.to_identity.did,
     },
     sort_keys=True,
+    separators=(", ", ": "),
 )
 signature = hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
 ```
 
 Stored as: `"hmac-sha256:<hex_digest>"`
+
+The signing body covers all security-relevant fields: both DID strings, the message ID, intent, payload, shared context, and the auth timestamp. Implementations **MUST** set `auth.timestamp` to the current wall-clock time immediately before computing the signing body.
 
 Canonical serialization is security critical. Implementations **MUST** use a deterministic encoder that preserves:
 

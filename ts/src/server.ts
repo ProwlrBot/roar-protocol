@@ -19,6 +19,9 @@ import {
 import { createMessage, verifyMessage } from "./message.js";
 import { EventBus } from "./streaming.js";
 import { StreamEvent } from "./types.js";
+import { DIDResolutionError, resolveDidToPublicKey } from "./did_resolver.js";
+import { InMemoryTokenStore, TokenStore } from "./token_store.js";
+import { DelegationToken, verifyToken } from "./delegation.js";
 
 type HandlerFunc = (
   msg: ROARMessage,
@@ -31,6 +34,7 @@ export interface ROARServerOptions {
   description?: string;
   skills?: string[];
   channels?: string[];
+  tokenStore?: TokenStore;
 }
 
 export class ROARServer {
@@ -44,6 +48,11 @@ export class ROARServer {
   private _handlers = new Map<MessageIntent, HandlerFunc>();
   private _eventBus = new EventBus();
   private _httpServer: http.Server | null = null;
+  // Server-authoritative token use-count store.
+  // The delegate's claimed use_count in the wire payload is ignored;
+  // this store is the only source of truth for max_uses enforcement.
+  // Use RedisTokenStore for multi-worker deployments (see token_store.ts).
+  private _tokenStore: TokenStore;
 
   constructor(identity: AgentIdentity, opts: ROARServerOptions = {}) {
     this._identity = identity;
@@ -53,6 +62,7 @@ export class ROARServer {
     this._description = opts.description ?? "";
     this._skills = opts.skills ?? [];
     this._channels = opts.channels ?? [];
+    this._tokenStore = opts.tokenStore ?? new InMemoryTokenStore();
   }
 
   get identity(): AgentIdentity {
@@ -82,6 +92,116 @@ export class ROARServer {
   }
 
   async handleMessage(msg: ROARMessage): Promise<ROARMessage> {
+    // Delegation token enforcement (mirrors Python ROARServer.handle_message)
+    const rawToken = msg.context["delegation_token"] as Record<string, unknown> | undefined;
+    if (rawToken) {
+      let token: DelegationToken;
+      try {
+        token = rawToken as unknown as DelegationToken;
+        if (
+          typeof token.token_id !== "string" ||
+          typeof token.delegator_did !== "string" ||
+          typeof token.delegate_did !== "string" ||
+          !Array.isArray(token.capabilities)
+        ) {
+          throw new Error("missing required fields");
+        }
+      } catch {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "invalid_delegation_token", message: "Malformed delegation token." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // SECURITY INVARIANT 1: bind check MUST run before signature verification.
+      // Ensures the token was issued to this exact sender — prevents token theft.
+      if (token.delegate_did !== msg.from_identity.did) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "delegation_token_unauthorized", message: "Token was not issued to this agent." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Expiry check (before consuming a use from the store)
+      if (token.expires_at !== null && Date.now() / 1000 > token.expires_at) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "delegation_token_exhausted", message: "Token expired or use limit reached." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Atomic use-count check + increment via the configured store.
+      const allowed = await this._tokenStore.getAndIncrement(token.token_id, token.max_uses);
+      if (!allowed) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "delegation_token_exhausted", message: "Token expired or use limit reached." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Determine the delegator's public key for signature verification.
+      // SECURITY INVARIANT 2: NEVER use context["delegator_public_key"] —
+      // that field is attacker-controlled and accepting it would allow a
+      // confused-deputy attack.
+      let delegatorPublicKey: string;
+      if (msg.from_identity.did === token.delegator_did) {
+        // Same-party delegation: sender IS the delegator, use their key directly.
+        const pk = msg.from_identity.public_key ?? undefined;
+        if (!pk) {
+          return createMessage(
+            this._identity,
+            msg.from_identity,
+            MessageIntent.RESPOND,
+            { error: "delegation_unverifiable", message: "No public key available for delegator DID." },
+            { in_reply_to: msg.id },
+          );
+        }
+        delegatorPublicKey = pk;
+      } else {
+        // 3-party delegation: resolve the delegator's DID to get their key.
+        // SECURITY INVARIANT 3: fail closed on resolution failure.
+        try {
+          delegatorPublicKey = await resolveDidToPublicKey(token.delegator_did);
+        } catch (e) {
+          if (e instanceof DIDResolutionError) {
+            return createMessage(
+              this._identity,
+              msg.from_identity,
+              MessageIntent.RESPOND,
+              {
+                error: "delegation_unverifiable",
+                message: `Could not resolve delegator DID: ${e.message}`,
+              },
+              { in_reply_to: msg.id },
+            );
+          }
+          throw e;
+        }
+      }
+
+      if (!verifyToken(token, delegatorPublicKey)) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "invalid_delegation_signature", message: "Delegation token signature verification failed." },
+          { in_reply_to: msg.id },
+        );
+      }
+    }
+
     const handler = this._handlers.get(msg.intent);
     if (!handler) {
       return createMessage(
@@ -161,7 +281,8 @@ export class ROARServer {
             const raw = JSON.parse(body) as Record<string, unknown>;
             const msg = messageFromWire(raw);
 
-            if (this._signingSecret && msg.auth) {
+            // C-1 fix: check signingSecret alone — empty auth must not bypass HMAC.
+            if (this._signingSecret) {
               if (!verifyMessage(msg, this._signingSecret, 300)) {
                 res.writeHead(401, { "Content-Type": "application/json" });
                 res.end(
@@ -177,10 +298,11 @@ export class ROARServer {
             const response = await this.handleMessage(msg);
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify(messageToWire(response)));
-          } catch (err) {
+          } catch {
+            // Do not surface parse/validation details — they may expose schema info.
             res.writeHead(400, { "Content-Type": "application/json" });
             res.end(
-              JSON.stringify({ error: "invalid_message", detail: String(err) }),
+              JSON.stringify({ error: "invalid_message", detail: "Request body is not a valid ROAR message." }),
             );
           }
         });

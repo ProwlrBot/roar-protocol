@@ -71,6 +71,7 @@ class AgentCard(BaseModel):
     endpoints: Dict[str, str] = Field(default_factory=dict)
     declared_capabilities: List[AgentCapability] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    attestation: Optional[str] = None  # base64url Ed25519 signature over canonical card JSON
 
 
 # ---------------------------------------------------------------------------

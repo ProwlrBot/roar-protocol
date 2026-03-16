@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ProwlrBot/roar-protocol/spec/schemas/delegation-token.json",
+  "title": "DelegationToken",
+  "description": "ROAR Layer 1: Signed capability grant from one agent (the delegator) to another (the delegate). The token is signed with the delegator's Ed25519 private key, so the delegate can prove the grant to third parties without the delegator being online. Tokens are included in ROARMessage.context[\"delegation_token\"] by the delegate when acting under a grant.",
+  "type": "object",
+  "required": [
+    "token_id",
+    "delegator_did",
+    "delegate_did",
+    "capabilities",
+    "issued_at",
+    "expires_at",
+    "max_uses",
+    "use_count",
+    "can_redelegate",
+    "signature"
+  ],
+  "properties": {
+    "token_id": {
+      "type": "string",
+      "description": "Unique token identifier. Format: tok_<10-char hex>. Generated at issuance; immutable thereafter.",
+      "pattern": "^tok_[a-f0-9]{10}$",
+      "examples": ["tok_a1b2c3d4e5"]
+    },
+    "delegator_did": {
+      "type": "string",
+      "description": "DID of the agent issuing this grant. Must match the public key used to produce the signature.",
+      "examples": ["did:roar:agent:alice-a1b2c3d4e5f6a1b2"]
+    },
+    "delegate_did": {
+      "type": "string",
+      "description": "DID of the agent receiving this grant. Only this agent may present the token.",
+      "examples": ["did:roar:agent:bob-b2c3d4e5f6a1b2c3"]
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "description": "Subset of the delegator's capabilities being granted. MUST be sorted lexicographically before signing — the signing body always uses the sorted form. A single '*' element means all current capabilities are granted.",
+      "examples": [["recon", "scan"], ["read", "write"], ["*"]]
+    },
+    "issued_at": {
+      "type": "number",
+      "description": "Unix timestamp (float, seconds since epoch) when this token was issued. Included in the signing body.",
+      "examples": [1710000000.0]
+    },
+    "expires_at": {
+      "type": ["number", "null"],
+      "description": "Unix timestamp after which this token is no longer valid. null means no expiry. Implementations MUST reject tokens where the current time exceeds this value.",
+      "examples": [1710003600.0, null]
+    },
+    "max_uses": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Maximum number of times this token may be consumed. null means unlimited. Implementations MUST reject tokens where use_count >= max_uses.",
+      "examples": [10, 1, null]
+    },
+    "use_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of times this token has been consumed. Incremented by the verifying party on each accepted use. This field is NOT included in the signing body — only fields that are fixed at issuance are signed.",
+      "default": 0,
+      "examples": [0, 3]
+    },
+    "can_redelegate": {
+      "type": "boolean",
+      "description": "Whether the delegate is permitted to issue further delegation tokens from this grant. false by default. Implementations MUST enforce this: if false, any attempt by the delegate to issue a child token MUST be rejected.",
+      "default": false,
+      "examples": [false, true]
+    },
+    "signature": {
+      "type": "string",
+      "description": "Ed25519 signature over the canonical signing body (see below). Format: ed25519:<base64url>. The signing body is the JSON-serialised object containing token_id, delegator_did, delegate_did, capabilities (sorted), issued_at, expires_at, max_uses, and can_redelegate — with keys sorted alphabetically and separators=(', ', ': '). The use_count field is excluded from signing.",
+      "pattern": "^ed25519:[A-Za-z0-9_-]+$",
+      "examples": ["ed25519:ABC123_base64url_encoded_signature"]
+    }
+  },
+  "additionalProperties": false,
+  "$comment": "Signing body covers: can_redelegate, capabilities (sorted lexicographically), delegate_did, delegator_did, expires_at, issued_at, max_uses, token_id — in that alphabetical order. use_count and signature are excluded. Reference implementation: python/src/roar_sdk/delegation.py DelegationToken._signing_body()",
+  "examples": [
+    {
+      "token_id": "tok_a1b2c3d4e5",
+      "delegator_did": "did:roar:agent:alice-a1b2c3d4e5f6a1b2",
+      "delegate_did": "did:roar:agent:bob-b2c3d4e5f6a1b2c3",
+      "capabilities": ["recon", "scan"],
+      "issued_at": 1710000000.0,
+      "expires_at": 1710003600.0,
+      "max_uses": 10,
+      "use_count": 0,
+      "can_redelegate": false,
+      "signature": "ed25519:ABC123_base64url_encoded_signature_here"
+    }
+  ]
+}

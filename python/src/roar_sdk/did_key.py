@@ -23,7 +23,6 @@ Usage::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from .did_document import DIDDocument
 from .signing import generate_keypair

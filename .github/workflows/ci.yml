@@ -19,6 +19,8 @@ jobs:
           cache-dependency-path: ts/package-lock.json
       - run: npm ci
         working-directory: ts
+      - run: npm run build
+        working-directory: ts
       - run: npx tsc --noEmit
         working-directory: ts
       - run: node tests/validate_golden.mjs
@@ -27,12 +29,66 @@ jobs:
   python:
     name: Python SDK
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - run: pip install -e ".[dev]"
         working-directory: python
-      - run: pytest tests/conformance/ -v
+      - name: lint — ruff
+        run: ruff check src/roar_sdk/
         working-directory: python
+      - name: typecheck — mypy
+        run: mypy src/roar_sdk/ --ignore-missing-imports
+        working-directory: python
+      - run: pytest tests/conformance/ -v
+        working-directory: .
+      - run: python tests/check_versions.py
+        working-directory: .
+
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install security tools
+        run: pip install bandit pip-audit 2>/dev/null || true
+        working-directory: python
+
+      - name: Install SDK deps for audit
+        run: pip install -e ".[dev]"
+        working-directory: python
+
+      - name: bandit — Python AST security scan (HIGH + MEDIUM only)
+        run: |
+          bandit -r src/roar_sdk/ \
+            -ll \
+            --skip B104,B107 \
+            -f txt \
+            --exit-zero 2>&1 | tee bandit-report.txt
+          # B104: binding to 0.0.0.0 — intentional for ROARHub
+          # B107: hardcoded empty-string password — default optional arg, not a credential
+          grep -E "^(Issue|Severity: HIGH|Severity: MEDIUM)" bandit-report.txt && exit 1 || true
+        working-directory: python
+
+      - name: pip-audit — dependency vulnerability scan
+        run: pip-audit --desc --fix-dry-run 2>&1 | tee pip-audit-report.txt
+        working-directory: python
+        continue-on-error: true  # document findings but don't block on dep vulns we can't control
+
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            python/bandit-report.txt
+            python/pip-audit-report.txt

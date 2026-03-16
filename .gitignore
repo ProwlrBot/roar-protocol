@@ -5,3 +5,8 @@ __pycache__/
 .eggs/
 dist/
 build/
+python/dist/
+ts/dist/
+
+# Claude internal files
+.claude/

@@ -16,7 +16,7 @@ import {
   verify as cryptoVerify,
 } from "crypto";
 import { pythonJsonDumps } from "./message.js";
-import { AgentIdentity, ROARMessage } from "./types.js";
+import { AgentCard, AgentIdentity, ROARMessage } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Key generation
@@ -131,6 +131,56 @@ export function verifyEd25519(
     const b64 = sigValue.slice("ed25519:".length);
     const rawSig = Buffer.from(b64, "base64url");
     const body = signingBodyEd25519(msg);
+    return cryptoVerify(null, body, pubKey, rawSig) as boolean;
+  } catch {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// AgentCard attestation
+// ---------------------------------------------------------------------------
+
+/** Build the canonical JSON body for AgentCard signing (excludes attestation). */
+function cardCanonicalBody(card: AgentCard): Buffer {
+  const body = pythonJsonDumps({
+    channels: card.channels,
+    declared_capabilities: card.declared_capabilities,
+    description: card.description,
+    did: card.identity.did,
+    capabilities: card.identity.capabilities,
+    endpoints: card.endpoints,
+    skills: card.skills,
+  });
+  return Buffer.from(body, "utf-8");
+}
+
+/**
+ * Sign an AgentCard with an Ed25519 private key.
+ * Sets card.attestation in-place and returns the base64url attestation string.
+ */
+export function signAgentCard(card: AgentCard, privateKeyHex: string): string {
+  const privKey = privateKeyFromHex(privateKeyHex);
+  const body = cardCanonicalBody(card);
+  const rawSig = cryptoSign(null, body, privKey) as Buffer;
+  const attestation = rawSig.toString("base64url");
+  card.attestation = attestation;
+  return attestation;
+}
+
+/**
+ * Verify AgentCard.attestation against card.identity.public_key.
+ * Returns false if attestation is missing, public_key is missing, or sig invalid.
+ */
+export function verifyAgentCard(card: AgentCard): boolean {
+  if (!card.attestation) return false;
+  const keyHex = card.identity.public_key;
+  if (!keyHex) return false;
+
+  try {
+    const pubKey = publicKeyFromHex(keyHex);
+    const rawSig = Buffer.from(card.attestation, "base64url");
+    const body = cardCanonicalBody(card);
     return cryptoVerify(null, body, pubKey, rawSig) as boolean;
   } catch {
     return false;

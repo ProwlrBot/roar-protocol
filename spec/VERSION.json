@@ -11,30 +11,31 @@
   },
   "compatibility": {
     "prowlrbot": ">=0.1.0",
-    "python_sdk_min_version": "0.1.0",
-    "ts_sdk_min_version": null,
+    "python_sdk_min_version": "0.3.2",
+    "ts_sdk_min_version": "0.3.2",
     "mcp_bridge": true,
     "a2a_bridge": true,
     "acp_bridge": false
   },
   "sdk_status": {
     "python": {
-      "overall": "70%",
+      "overall": "complete",
       "identity": "complete",
-      "discovery": "complete (in-memory), partial (federated)",
+      "discovery": "complete (in-memory + hub + federation)",
       "connect": "complete (HTTP, WS, stdio)",
       "exchange": "complete",
       "stream": "complete (EventBus, SSE)",
-      "notes": "Ed25519 signing defined but not enforced end-to-end. ACP adapter is a stub."
+      "notes": "RedisTokenStore + AgentCard attestation added in 0.3.2."
     },
     "typescript": {
-      "overall": "30%",
-      "identity": "partial — field names diverge (agent_id vs did)",
-      "discovery": "not implemented",
-      "connect": "not implemented",
-      "exchange": "partial — enum values and field names diverge from spec",
-      "stream": "partial — StreamEventType enum values diverge",
-      "notes": "See SDK-ROADMAP.md for the full divergence table and open tasks."
+      "overall": "complete",
+      "conformance": "30/30 checks passing",
+      "identity": "complete",
+      "discovery": "complete (in-memory + hub + federation)",
+      "connect": "complete (HTTP, WS, stdio)",
+      "exchange": "complete",
+      "stream": "complete",
+      "notes": "ROARHub + signAgentCard/verifyAgentCard + RedisTokenStore added in 0.3.2."
     }
   }
 }

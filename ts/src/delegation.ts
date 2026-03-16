@@ -123,7 +123,7 @@ function signingBody(token: DelegationToken): Buffer {
     token_id: token.token_id,
     delegator_did: token.delegator_did,
     delegate_did: token.delegate_did,
-    capabilities: token.capabilities,
+    capabilities: [...token.capabilities].sort(),
     issued_at: token.issued_at,
     expires_at: token.expires_at,
     max_uses: token.max_uses,
@@ -146,6 +146,9 @@ function signingBody(token: DelegationToken): Buffer {
  * @param expiresInSeconds    - TTL from now (default 3600). 0 = no expiry.
  * @param maxUses             - optional hard use cap
  * @param canRedelegate       - whether the delegate may further delegate
+ * @param parentToken         - if re-delegating, the parent token being re-delegated;
+ *                              its canRedelegate flag must be true
+ * @throws Error if parentToken.can_redelegate is false
  */
 export function issueToken(
   delegatorDid: string,
@@ -155,7 +158,11 @@ export function issueToken(
   expiresInSeconds = 3600,
   maxUses: number | null = null,
   canRedelegate = false,
+  parentToken: DelegationToken | null = null,
 ): DelegationToken {
+  if (parentToken !== null && !parentToken.can_redelegate) {
+    throw new Error("Cannot re-delegate: parent token does not permit re-delegation");
+  }
   const now = Date.now() / 1000;
   const token: DelegationToken = {
     token_id: "tok_" + randomBytes(5).toString("hex"),

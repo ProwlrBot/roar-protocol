@@ -29,7 +29,7 @@ Quick start::
     )
 """
 
-__version__ = "0.2.1"
+__version__ = "0.3.2"
 __author__ = "kdairatchi"
 __spec_version__ = "0.2.0"
 
@@ -57,8 +57,9 @@ from .types import (
 from .client import ROARClient
 from .server import ROARServer
 from .streaming import EventBus, StreamFilter, Subscription
-from .signing import generate_keypair, sign_ed25519, verify_ed25519
+from .signing import generate_keypair, sign_ed25519, verify_ed25519, sign_agent_card, verify_agent_card
 from .delegation import DelegationToken, issue_token, verify_token
+from .token_store import InMemoryTokenStore, RedisTokenStore
 from .adapters import ACPAdapter
 from .adapters.detect import detect_protocol, ProtocolType
 from .hub import ROARHub
@@ -106,6 +107,8 @@ __all__ = [
     "generate_keypair",
     "sign_ed25519",
     "verify_ed25519",
+    "sign_agent_card",
+    "verify_agent_card",
     # Delegation tokens (cryptographic, portable)
     "DelegationToken",
     "issue_token",
@@ -130,4 +133,7 @@ __all__ = [
     # Strict verification
     "StrictMessageVerifier",
     "VerificationResult",
+    # Token stores
+    "InMemoryTokenStore",
+    "RedisTokenStore",
 ]

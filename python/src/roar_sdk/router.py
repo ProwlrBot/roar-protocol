@@ -92,7 +92,8 @@ def create_roar_router(
 
     from .server import ROARServer
 
-    assert isinstance(server, ROARServer)
+    if not isinstance(server, ROARServer):
+        raise TypeError(f"create_roar_router: 'server' must be a ROARServer, got {type(server).__name__}")
     router = APIRouter(prefix="/roar", tags=["roar"])
 
     _limiter: Optional[TokenBucket] = None

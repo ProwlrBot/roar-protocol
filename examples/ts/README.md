@@ -6,13 +6,16 @@ Minimal examples showing ROAR agent communication using the TypeScript SDK.
 
 ## Prerequisites
 
-The TypeScript examples import directly from the TS SDK source tree. No separate build step required when using `ts-node` or Bun:
+The TypeScript examples import from `@roar-protocol/sdk`. Install the package or build from source:
 
 ```bash
-# From the prowlrbot repo root, build the TS SDK first:
-cd packages/roar-sdk-ts && npm ci && npm run build && cd ../..
+# Install from npm
+npm install @roar-protocol/sdk
 
-# OR use ts-node/Bun directly (no build needed):
+# OR build from source (from the repo root):
+cd ts && npm ci && npm run build && cd ..
+
+# Run with ts-node (no build needed):
 npm install -g ts-node   # once
 # or: curl -fsSL https://bun.sh/install | bash
 ```

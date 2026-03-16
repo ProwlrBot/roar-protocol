@@ -8,8 +8,8 @@
  * Run this first, then run client.ts in a second terminal.
  *
  * Requirements:
- *   cd prowlrbot/packages/roar-sdk-ts && npm ci && npm run build
- *   # or use ts-node / Bun directly
+ *   npm install @roar-protocol/sdk
+ *   # or build from source: cd ts && npm ci && npm run build
  *
  * Usage (compiled):
  *   node dist/examples/ts/echo_server.js
@@ -29,7 +29,7 @@ import {
   createMessage,
   signMessage,
   verifyMessage,
-} from "../../ts/src/index.js";
+} from "@roar-protocol/sdk";
 
 const PORT = 8089;
 const SHARED_SECRET = "roar-example-shared-secret";

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ProwlrBot/roar-protocol/spec/schemas/agent-card.json",
+  "title": "AgentCard",
+  "description": "ROAR Layer 2: Public-facing capability descriptor for an agent. Combines AgentIdentity with discovery metadata — skills, endpoints, and formal capability declarations. Referenced by AgentDirectory for registration and capability search.",
+  "type": "object",
+  "required": ["identity"],
+  "properties": {
+    "identity": {
+      "$ref": "agent-identity.json",
+      "description": "The agent's Layer 1 identity (DID, type, capabilities, version, optional public key)."
+    },
+    "description": {
+      "type": "string",
+      "description": "Plain-English description of what this agent does. Shown to humans and used by other agents to decide whether to collaborate.",
+      "examples": [
+        "Backend architect specializing in API design and database schemas",
+        "Code reviewer focused on security and performance"
+      ]
+    },
+    "skills": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Named skills this agent has installed. Strings match registered skill identifiers (e.g., 'code_review', 'api_design').",
+      "examples": [["code_review", "api_design", "db_migration"]]
+    },
+    "channels": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Communication channels this agent is reachable on (e.g., 'console', 'discord', 'telegram').",
+      "examples": [["console"], ["console", "discord"]]
+    },
+    "endpoints": {
+      "type": "object",
+      "description": "Transport endpoints keyed by protocol type ('http', 'ws', 'stdio', 'grpc'). Values are fully-qualified URLs or paths.",
+      "additionalProperties": {"type": "string"},
+      "examples": [
+        {"http": "http://localhost:8088/api/agent/architect"},
+        {"http": "http://192.168.1.10:8089/", "ws": "ws://192.168.1.10:8089/ws"}
+      ]
+    },
+    "declared_capabilities": {
+      "type": "array",
+      "description": "Formal capability declarations with input/output JSON schemas. Optional but enables capability-aware routing and validation.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique capability identifier (e.g., 'code_review', 'run_command')."
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of what this capability does."
+          },
+          "input_schema": {
+            "type": "object",
+            "description": "JSON Schema for the capability's input parameters.",
+            "additionalProperties": true
+          },
+          "output_schema": {
+            "type": "object",
+            "description": "JSON Schema for the capability's output.",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "examples": [
+        [
+          {
+            "name": "code_review",
+            "description": "Review code for quality, security, and maintainability",
+            "input_schema": {
+              "type": "object",
+              "properties": {
+                "file_path": {"type": "string"},
+                "review_type": {"type": "string", "enum": ["quality", "security", "performance"]}
+              }
+            },
+            "output_schema": {
+              "type": "object",
+              "properties": {
+                "issues": {"type": "array"},
+                "score": {"type": "number"}
+              }
+            }
+          }
+        ]
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Arbitrary key-value metadata. Use for team, timezone, owner, or any deployment-specific properties not covered by other fields.",
+      "additionalProperties": true,
+      "examples": [{"team": "backend", "timezone": "America/New_York"}]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "identity": {
+        "did": "did:roar:agent:architect-a1b2c3d4e5f6a1b2",
+        "display_name": "architect",
+        "agent_type": "agent",
+        "capabilities": ["python", "api", "architecture"],
+        "version": "1.0",
+        "public_key": null
+      },
+      "description": "Backend architect specializing in API design and database schemas",
+      "skills": ["code_review", "api_design", "db_migration"],
+      "channels": ["console"],
+      "endpoints": {
+        "http": "http://localhost:8088/api/agent/architect"
+      },
+      "declared_capabilities": [
+        {
+          "name": "code_review",
+          "description": "Review code for quality and security",
+          "input_schema": {"type": "object", "properties": {"file_path": {"type": "string"}}},
+          "output_schema": {"type": "object", "properties": {"issues": {"type": "array"}}}
+        }
+      ],
+      "metadata": {
+        "team": "backend",
+        "timezone": "America/New_York"
+      }
+    }
+  ]
+}

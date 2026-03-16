@@ -2,7 +2,7 @@
 
 > Status of Python and TypeScript SDK implementations relative to the spec.
 
-Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audited, 30/30 conformance)
+Last updated: 2026-03-16 (v0.3.2 — RedisTokenStore, AgentCard attestation, full security hardening)
 
 ---
 
@@ -11,12 +11,12 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | Layer | Spec | Python SDK | TypeScript SDK |
 |:------|:----:|:----------:|:--------------:|
 | 1 — Identity | ✅ | ✅ Complete | ✅ Complete |
-| 2 — Discovery | ✅ | ✅ Complete | ⚠️ Partial (no Hub/federation) |
+| 2 — Discovery | ✅ | ✅ Complete | ✅ Complete |
 | 3 — Connect | ✅ | ✅ Complete | ✅ Complete |
 | 4 — Exchange | ✅ | ✅ Complete | ✅ Complete |
 | 5 — Stream | ✅ | ✅ Complete | ✅ Complete |
 
-**Conformance:** Python ✅ 30/30 &nbsp;|&nbsp; TypeScript ✅ 30/30
+**Conformance:** Python ✅ 76/76 tests &nbsp;|&nbsp; TypeScript ✅ 30/30 golden fixtures + 10 unit tests
 
 ---
 
@@ -28,6 +28,7 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 |:--------|:------:|:-------|
 | `AgentIdentity` + `did:roar:` DID generation | ✅ | `types.py` |
 | `AgentCard`, `AgentCapability` | ✅ | `types.py` |
+| AgentCard signed attestation | ✅ | `signing.py` |
 | W3C DID Document generation | ✅ | `did_document.py` |
 | `did:key` ephemeral identities | ✅ | `did_key.py` |
 | `did:web` DNS-bound identities | ✅ | `did_web.py` |
@@ -43,8 +44,9 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | SQLite-backed persistent directory | ✅ | `sqlite_directory.py` |
 | `DiscoveryCache` (TTL + LRU) | ✅ | `discovery_cache.py` |
 | `ROARHub` with REST API | ✅ | `hub.py` |
+| Hub challenge-response registration | ✅ | `hub_auth.py` |
 | Hub federation (push/pull sync) | ✅ | `hub.py` |
-| DNS-based discovery (BANDAID) | ❌ | future |
+| DNS-based discovery (IETF BANDAID) | ❌ | future |
 
 ### Layer 3 — Connect
 
@@ -64,6 +66,7 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | `ROARMessage` + 7 intents | ✅ | `types.py` |
 | HMAC-SHA256 signing + replay protection | ✅ | `types.py` |
 | Ed25519 message signing/verification | ✅ | `signing.py` |
+| `StrictMessageVerifier` (production receiver) | ✅ | `verifier.py` |
 | `IdempotencyGuard` (dedup) | ✅ | `dedup.py` |
 | MCP adapter | ✅ | `types.py` |
 | A2A adapter | ✅ | `types.py` |
@@ -79,6 +82,13 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | `IdempotencyGuard` for stream dedup | ✅ | `dedup.py` |
 | SSE via FastAPI router | ✅ | `router.py` |
 
+### Token Stores
+
+| Store | Use Case | Status |
+|:------|:---------|:-------|
+| `InMemoryTokenStore` | Single-process, default | ✅ |
+| `RedisTokenStore` | Multi-worker, requires `roar-sdk[redis]` | ✅ |
+
 ---
 
 ## TypeScript SDK — Feature Matrix
@@ -89,6 +99,7 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 |:--------|:------:|:-------|
 | `AgentIdentity` + `did:roar:` DID generation | ✅ | `types.ts` |
 | `AgentCard`, `AgentCapability` | ✅ | `types.ts` |
+| AgentCard signed attestation | ✅ | `signing.ts` |
 | Ed25519 key generation and signing | ✅ | `signing.ts` |
 | `DelegationToken` (cryptographic) | ✅ | `delegation.ts` |
 | W3C DID Document | ✅ | `did_document.ts` |
@@ -103,16 +114,20 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | In-memory `AgentDirectory` | ✅ | `types.ts` |
 | SQLite-backed persistent directory | ✅ | `sqlite_directory.ts` |
 | `DiscoveryCache` | ✅ | `discovery_cache.ts` |
-| Hub federation | ❌ | future |
+| `ROARHub` with REST API | ✅ | `hub.ts` |
+| Hub challenge-response registration | ✅ | `hub_auth.ts` |
+| Hub federation (sync + export) | ✅ | `hub.ts` |
+| DNS-based discovery (IETF BANDAID) | ❌ | future |
 
 ### Layer 3 — Connect
 
 | Feature | Status | Module |
 |:--------|:------:|:-------|
 | HTTP transport (`ROARClient`) | ✅ | `client.ts` |
-| WebSocket transport (client) | ✅ | `websocket.ts` |
-| Native HTTP router (SSE + WS server + rate limit) | ✅ | `router.ts` |
+| WebSocket transport | ✅ | `websocket.ts` |
+| Native HTTP router (SSE + WS + rate limit) | ✅ | `router.ts` |
 | stdio transport | ✅ | `stdio.ts` |
+| gRPC transport | ❌ | future |
 
 ### Layer 4 — Exchange
 
@@ -121,6 +136,7 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | `ROARMessage` + 7 intents | ✅ | `types.ts` |
 | HMAC-SHA256 signing (`pythonJsonDumps` compatible) | ✅ | `message.ts` |
 | Ed25519 signing/verification | ✅ | `signing.ts` |
+| `StrictMessageVerifier` (production receiver) | ✅ | `verifier.ts` |
 | Protocol auto-detection | ✅ | `detect.ts` |
 
 ### Layer 5 — Stream
@@ -132,37 +148,36 @@ Last updated: 2026-03-13 (TypeScript SDK complete — all layers, security audit
 | `IdempotencyGuard` | ✅ | `dedup.ts` |
 | AIMD backpressure | ✅ | `streaming.ts` |
 
+### Token Stores
+
+| Store | Use Case | Status |
+|:------|:---------|:-------|
+| `InMemoryTokenStore` | Single-process, default | ✅ |
+| `RedisTokenStore` | Multi-worker, requires `ioredis` | ✅ |
+
 ---
 
 ## Conformance
 
-Run the full conformance suite (no install needed):
-
 ```bash
-# Python
-cd python && pip install -e ".[dev]" && pytest tests/conformance/
+# Python — full test suite
+cd python && pip install -e ".[dev]" && pytest ../tests/ -q
 
-# TypeScript
+# TypeScript — unit tests + golden fixtures
+cd ts && npm test
 node tests/validate_golden.mjs
 ```
 
-All 30 checks must pass before claiming ROAR compliance.
+All checks must pass before claiming ROAR compliance.
 
 ---
 
-## Next SDK Priorities
+## What's Still Ahead
 
-### TypeScript SDK — v1.0 Release
-- [ ] npm publish as `@roar-protocol/sdk`
-- [ ] GitHub Actions CI (typecheck + conformance on every PR)
-- [ ] Changelog / release notes
+Both SDKs are feature-complete for the current spec. Remaining work is either spec extensions or transport additions:
 
-### Python SDK — Medium Priority
-1. `DelegationToken` use-count enforcement server-side (currently honor-system)
-2. DNS-based discovery (IETF BANDAID alignment)
-3. gRPC transport stub
-
-### Both SDKs — Future
-1. Hub federation (ROARHub REST server in TypeScript)
-2. QUIC/HTTP3 transport
-3. Browser/WASM compatibility layer
+- **DNS-based discovery** — spec-level design work needed before implementation
+- **gRPC transport** — requires protobuf schema and streaming semantics definition
+- **QUIC/HTTP3 transport** — future
+- **Browser/WASM compatibility** — future
+- **AAIF submission** — register ROAR as a bridge protocol at the AAIF technical committee

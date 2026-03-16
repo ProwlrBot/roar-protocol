@@ -2,6 +2,10 @@
 
 > Transport negotiation, session management, keep-alive, connection lifecycle
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119.
+
 ---
 
 ## Overview
@@ -68,7 +72,7 @@ Agent                          Hub/Server
 
 ### 2. Heartbeat
 
-Agents send heartbeats every 60 seconds. If no heartbeat is received for 5 minutes, the agent is considered dead and its locks are released.
+Agents MUST send heartbeats every 60 seconds. If no heartbeat is received for 5 minutes, the agent MUST be considered dead and its locks released.
 
 ### 3. Dead Agent Sweep
 
