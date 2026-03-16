@@ -91,6 +91,24 @@ Stored as: `"hmac-sha256:<hex_digest>"`
 
 ---
 
+
+## Security Verification Profile (Normative)
+
+Implementations **MUST** enforce all checks below before dispatching a message to business logic:
+
+1. **Signature scheme allowlist**: accept only configured schemes (default: `hmac-sha256`, `ed25519`). Unknown schemes **MUST** be rejected.
+2. **Recipient binding**: `to.did` **MUST** equal the local receiver DID (or an explicitly configured alias) to prevent confused-deputy forwarding.
+3. **Timestamp window**: `auth.timestamp` **MUST** be present and numeric. Receivers **MUST** reject messages older than the replay window (default 300s) and **MUST** reject messages too far in the future (default 30s skew allowance).
+4. **Replay cache**: receivers **MUST** maintain a deduplication cache keyed by message `id` for at least the replay window. Duplicate IDs within the window **MUST** be rejected.
+5. **Canonical body parity**: signing and verification **MUST** use identical canonicalization for all covered fields (`id`, `from.did`, `to.did`, `intent`, `payload`, `context`, `auth.timestamp`).
+6. **Fail closed**: malformed `auth` objects, missing required fields, or verification errors **MUST** return an auth failure and **MUST NOT** reach intent handlers.
+
+### Key and Trust Binding (Normative)
+
+- For `ed25519`, verifiers **MUST** obtain the public key from a trusted identity record (DID document or trusted directory). Verifiers **MUST NOT** trust a key supplied only inside the message body.
+- For HMAC, deployments **SHOULD** support key identifiers (`kid`) and overlap old/new keys during rotation; verifiers **MUST** reject unknown `kid` values.
+- Implementations **SHOULD** include the negotiated protocol/version in policy checks and **MUST** reject unknown major versions to prevent downgrade ambiguity.
+
 ## Protocol Adapters
 
 ### MCP ↔ ROAR
