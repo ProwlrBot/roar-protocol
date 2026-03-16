@@ -35,7 +35,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from ..types import AgentIdentity, MessageIntent, ROARMessage
 
@@ -81,7 +81,7 @@ class ACPAdapter:
             context["session_id"] = session_id
 
         return ROARMessage(
-            **{"from": from_agent, "to": to_agent},
+            **cast(Dict[str, Any], {"from": from_agent, "to": to_agent}),
             intent=intent,
             payload=payload,
             context=context,
@@ -97,7 +97,7 @@ class ACPAdapter:
     ) -> ROARMessage:
         """Translate an ACP session lifecycle event to a ROARMessage."""
         return ROARMessage(
-            **{"from": from_agent, "to": to_agent},
+            **cast(Dict[str, Any], {"from": from_agent, "to": to_agent}),
             intent=MessageIntent.NOTIFY,
             payload={"event": f"session.{event}", **(metadata or {})},
             context={"protocol": "acp", "session_id": session_id},

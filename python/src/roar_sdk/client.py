@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 from .types import (
     AgentCard,
@@ -89,7 +89,7 @@ class ROARClient:
             else AgentIdentity(did=to_agent_id, display_name="unknown")
         )
         msg = ROARMessage(
-            **{"from": self._identity, "to": to_identity},
+            **cast(Dict[str, Any], {"from": self._identity, "to": to_identity}),
             intent=intent,
             payload=content,
             context=context or {},

@@ -31,7 +31,7 @@ from __future__ import annotations
 import base64
 import logging
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from .hub_auth import ChallengeStore
 from .types import AgentCard, AgentDirectory, DiscoveryEntry
@@ -373,7 +373,7 @@ class ROARHub:
             "exported_at": time.time(),
             "entries": entries,
         }
-        results = {}
+        results: dict[str, dict[str, Any]] = {}
         async with httpx.AsyncClient(timeout=10) as client:
             for peer in self._peers:
                 try:
@@ -393,7 +393,7 @@ class ROARHub:
         except ImportError:
             raise ImportError("Federation pull requires httpx: pip install 'roar-sdk[http]'")
 
-        results = {}
+        results: dict[str, dict[str, Any]] = {}
         async with httpx.AsyncClient(timeout=10) as client:
             for peer in self._peers:
                 try:
