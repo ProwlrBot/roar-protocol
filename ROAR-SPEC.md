@@ -272,7 +272,7 @@ A ROAR-compliant server exposes:
 ## Security
 
 - **Message signing**: HMAC-SHA256 over `{id, from DID, to DID, intent, payload, context, timestamp}` with a shared secret.
-- **Replay protection**: `auth.timestamp` verified within ±5 minutes.
+- **Replay protection:** Implementations MUST reject messages whose `auth.timestamp` differs from the server's wall clock by more than 300 seconds (5 minutes). Implementations MUST additionally record seen message IDs (the `id` field) for a minimum of 600 seconds and reject any message whose ID has been seen before (HTTP 409 Conflict). Timestamp windowing alone is insufficient — a nonce/ID deduplication store is required for full replay protection.
 - **Identity verification**: DID resolution confirms agent identity before accepting messages.
 - **Transport encryption**: TLS required for HTTP and WebSocket transports in production.
 - **Ed25519**: Optional public key in `AgentIdentity.public_key` for asymmetric signing (spec complete, SDK implementation pending).

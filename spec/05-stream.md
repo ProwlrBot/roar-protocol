@@ -2,6 +2,10 @@
 
 > Real-time event streaming, 8 event types, pub/sub, SSE transport
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119.
+
 ---
 
 ## Overview
@@ -103,7 +107,7 @@ The A2A server (`src/prowlrbot/protocols/a2a_server.py`) provides this SSE endpo
 
 ## Design Decisions
 
-1. **8 fixed event types** — easy to build dashboards and filters
-2. **SSE over WebSocket** — simpler, works through proxies, sufficient for one-way delivery
-3. **In-process EventBus** — no external message broker required
-4. **Source is a DID** — events are always attributable for audit trails
+1. **8 fixed event types** — Implementations MUST use only the defined event types; custom values are NOT permitted on the wire.
+2. **SSE over WebSocket** — SSE SHOULD be used for server-to-client streaming; WebSocket MAY be used where bidirectionality is needed.
+3. **In-process EventBus** — No external message broker is REQUIRED for compliant implementations.
+4. **Source is a DID** — The `source` field MUST be a valid DID; events MUST always be attributable for audit trails.

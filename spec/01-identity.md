@@ -2,6 +2,10 @@
 
 > Agent registration, W3C DID-based identity, Ed25519 signing, capability tokens
 
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119.
+
 ---
 
 ## Overview
@@ -36,12 +40,12 @@ did:roar:ide:claude-code-e1f2a3b4
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `did` | string | Auto-generated | W3C DID URI. Generated from `agent_type` + `display_name` + random suffix if not provided |
-| `display_name` | string | Recommended | Human-readable name (e.g., "architect", "frontend-dev") |
-| `agent_type` | string | Yes | One of: `agent`, `tool`, `human`, `ide` |
-| `capabilities` | string[] | Recommended | What this agent can do (e.g., `["code", "review", "testing"]`) |
-| `version` | string | Yes | Protocol version (default: "1.0") |
-| `public_key` | string | Optional | Ed25519 public key (hex-encoded) for message signing |
+| `did` | string | Auto-generated | W3C DID URI. MUST be generated from `agent_type` + `display_name` + random suffix if not provided |
+| `display_name` | string | RECOMMENDED | Human-readable name (e.g., "architect", "frontend-dev") |
+| `agent_type` | string | REQUIRED | MUST be one of: `agent`, `tool`, `human`, `ide` |
+| `capabilities` | string[] | RECOMMENDED | What this agent can do (e.g., `["code", "review", "testing"]`) |
+| `version` | string | REQUIRED | Protocol version (default: "1.0") |
+| `public_key` | string | OPTIONAL | Ed25519 public key (hex-encoded) for message signing |
 
 ### Agent Types
 
@@ -133,8 +137,8 @@ agent = AgentIdentity(
 
 ## Security Considerations
 
-- DIDs are **self-sovereign** — no central registry required for generation
-- The `public_key` field enables **message authentication** without shared secrets
-- Agent types constrain what actions are expected (tools execute, agents delegate)
-- Capabilities are **advisory** — they declare intent but don't enforce access control
-- For access control, combine identity with the Connect layer's auth methods (HMAC, JWT, mTLS)
+- DIDs are **self-sovereign** — no central registry is REQUIRED for generation.
+- The `public_key` field enables **message authentication** without shared secrets.
+- Agent types constrain what actions are expected: tools SHOULD execute, agents SHOULD delegate.
+- Capabilities are **advisory** — they declare intent but MUST NOT be treated as enforced access control by themselves.
+- For access control, implementations MUST combine identity with the Connect layer's auth methods (HMAC, JWT, mTLS).
