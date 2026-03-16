@@ -19,6 +19,11 @@ import {
 import { createMessage, verifyMessage } from "./message.js";
 import { EventBus } from "./streaming.js";
 import { StreamEvent } from "./types.js";
+import {
+  DelegationToken,
+  isTokenValid,
+  verifyToken,
+} from "./delegation.js";
 
 type HandlerFunc = (
   msg: ROARMessage,
@@ -44,6 +49,12 @@ export class ROARServer {
   private _handlers = new Map<MessageIntent, HandlerFunc>();
   private _eventBus = new EventBus();
   private _httpServer: http.Server | null = null;
+  // Server-authoritative use counts keyed by token_id.
+  // The delegate's claimed use_count in the wire payload is ignored;
+  // this map is the only source of truth for max_uses enforcement.
+  // NOTE: _tokenUseCounts is in-process memory. Multi-worker deployments
+  // will have per-worker counters — see Python SDK comment for guidance.
+  private _tokenUseCounts = new Map<string, number>();
 
   constructor(identity: AgentIdentity, opts: ROARServerOptions = {}) {
     this._identity = identity;
@@ -82,6 +93,67 @@ export class ROARServer {
   }
 
   async handleMessage(msg: ROARMessage): Promise<ROARMessage> {
+    // Delegation token enforcement (mirrors Python ROARServer.handle_message)
+    const rawToken = msg.context["delegation_token"] as Record<string, unknown> | undefined;
+    if (rawToken) {
+      let token: DelegationToken;
+      try {
+        token = rawToken as unknown as DelegationToken;
+        if (
+          typeof token.token_id !== "string" ||
+          typeof token.delegator_did !== "string" ||
+          typeof token.delegate_did !== "string" ||
+          !Array.isArray(token.capabilities)
+        ) {
+          throw new Error("missing required fields");
+        }
+      } catch {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "invalid_delegation_token", message: "Malformed delegation token." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Override delegate-supplied use_count with the server-authoritative value.
+      token.use_count = this._tokenUseCounts.get(token.token_id) ?? 0;
+
+      if (!isTokenValid(token)) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "delegation_token_exhausted", message: "Token expired or use limit reached." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Verify Ed25519 signature when a delegator public key is available.
+      // If not available (C-3: no DID resolver yet), skip gracefully.
+      const delegatorPublicKey: string | undefined =
+        msg.from_identity.did === token.delegator_did
+          ? (msg.from_identity.public_key ?? undefined)
+          : (msg.context["delegator_public_key"] as string | undefined);
+
+      if (delegatorPublicKey) {
+        if (!verifyToken(token, delegatorPublicKey)) {
+          return createMessage(
+            this._identity,
+            msg.from_identity,
+            MessageIntent.RESPOND,
+            { error: "invalid_delegation_signature", message: "Delegation token signature verification failed." },
+            { in_reply_to: msg.id },
+          );
+        }
+      }
+      // else: no public key resolvable (C-3: no DID resolver yet) — skip gracefully
+
+      // Increment server-authoritative use count.
+      this._tokenUseCounts.set(token.token_id, token.use_count + 1);
+    }
+
     const handler = this._handlers.get(msg.intent);
     if (!handler) {
       return createMessage(
