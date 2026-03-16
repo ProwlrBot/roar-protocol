@@ -50,4 +50,14 @@ msg4.auth["signature"] = "hmac-sha256:" + "0" * 64
 verifier4 = StrictMessageVerifier(hmac_secret="test-secret", expected_recipient_did=DST.did)
 assert_ok(verifier4.verify(msg4).error == "invalid_hmac_signature", "tamper_detected")
 
+msg5 = make_signed()
+msg5.auth["signature"] = "rsa-pss:" + "ab" * 64
+verifier5 = StrictMessageVerifier(hmac_secret="test-secret", expected_recipient_did=DST.did)
+assert_ok(verifier5.verify(msg5).error == "signature_scheme_not_allowed", "scheme_allowlist")
+
+msg6 = make_signed()
+msg6.auth.pop("timestamp", None)
+verifier6 = StrictMessageVerifier(hmac_secret="test-secret", expected_recipient_did=DST.did)
+assert_ok(verifier6.verify(msg6).error == "missing_or_invalid_auth_timestamp", "timestamp_required")
+
 print("strict verifier checks passed")

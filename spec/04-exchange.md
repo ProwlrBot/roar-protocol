@@ -123,11 +123,15 @@ signature = hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdig
 
 Stored as: `"hmac-sha256:<hex_digest>"`
 
-The signing body covers all security-relevant fields: both DID strings, the
-message ID, intent, payload, shared context, and the auth timestamp.
-Implementations MUST set `auth.timestamp` to the current wall-clock time
-immediately before computing the signing body, so the timestamp value included
-in the body matches the value stored in `auth.timestamp`.
+The signing body covers all security-relevant fields: both DID strings, the message ID, intent, payload, shared context, and the auth timestamp. Implementations **MUST** set `auth.timestamp` to the current wall-clock time immediately before computing the signing body.
+
+Canonical serialization is security critical. Implementations **MUST** use a deterministic encoder that preserves:
+
+- Recursive lexical key ordering.
+- Canonical numeric rendering that is interoperable across SDKs.
+- Exact field coverage above (no omissions and no additional fields).
+
+Implementations **SHOULD** validate canonicalization against shared golden fixtures in `tests/conformance/golden/signature.json`.
 
 ---
 

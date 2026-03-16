@@ -1,72 +1,126 @@
 # ROAR Protocol Security Review (Protocol-Level)
 
-Date: 2026-03-16
-Scope: protocol spec (`ROAR-SPEC.md`, `spec/*.md`, schemas), SDK code (`python/src/roar_sdk`, `ts/src`), conformance tests (`tests/*`).
+Date: 2026-03-16  
+Scope reviewed: protocol spec (`ROAR-SPEC.md`, `spec/*.md`, `spec/schemas/*.json`), SDK code (`python/src/roar_sdk`, `ts/src`), conformance and security tests (`tests/*`).
 
-## Risk Summary by Severity
+## 1) Protocol Risks by Severity
 
-## Critical
-1. **No mandatory replay cache at verifier boundary**  
-   Signatures validate message integrity, but receivers can accept the same signed message repeatedly within timestamp window unless they separately enforce deduplication.
+### Critical
 
-2. **Confused deputy via missing recipient binding policy**  
-   Verification does not require `to.did` to match local service identity; valid signed messages can be forwarded to unintended recipients.
+1. **Replay window can be bypassed without mandatory dedup state**
+   - Impact: an attacker can re-send a valid message multiple times within time window and trigger repeated side effects.
+   - Evidence: base `verify()` in both SDKs checks signature+timestamp only; dedup is optional unless `StrictMessageVerifier` is used.
+   - Recommendation: make receiver-side replay cache (`id` key) a hard requirement in all production profiles.
 
-## High
-1. **Trust establishment ambiguity for Ed25519 key source**  
-   Message-level `auth.public_key` exists in SDK signer path, but trust source requirements are not normative. Implementers may trust attacker-supplied keys.
+2. **Recipient confusion / confused deputy if `to.did` not bound**
+   - Impact: signed messages intended for service A can be replayed/forwarded to service B if B validates only signature.
+   - Evidence: strict verifier enforces recipient DID, but generic verifier APIs do not.
+   - Recommendation: require policy check that `to.did` equals local receiver DID (or explicit alias set).
 
-2. **Timestamp handling ambiguity (age vs future-skew)**  
-   Existing verification uses absolute delta; spec does not normatively state maximum future skew nor mandatory rejection behavior.
+### High
 
-3. **Downgrade/algorithm confusion risk**  
-   Spec references HMAC and Ed25519 but lacks strict per-deployment allowlist language and unknown-scheme rejection rules.
+1. **Canonicalization ambiguity across spec sections**
+   - Impact: signature verification failures or, worse, inconsistent covered fields across implementations.
+   - Evidence: prior `spec/04-exchange.md` signing snippet omitted `from`, `to`, `context`, `timestamp` while main spec and SDKs include them.
+   - Remediation patch: updated `spec/04-exchange.md` signing body and normative canonicalization text.
 
-## Medium
-1. **Canonicalization under-specified across docs**  
-   `ROAR-SPEC.md` canonical body differs from simplified `spec/04-exchange.md` example, creating interop and security drift risk.
+2. **Trust-establishment ambiguity for Ed25519 key source**
+   - Impact: implementations might trust a key supplied by attacker in message body (`auth.public_key`) and accept forged sender identity.
+   - Evidence: signers include `auth.public_key`; only strict normative text says key must come from trusted DID/doc directory.
+   - Recommendation: elevate this to explicit MUST-level verifier guidance in identity + exchange sections.
 
-2. **Schema validation gap at transport boundary**  
-   TS parser validates only selected fields and may permit malformed nested identities/context shapes before business logic.
+3. **Downgrade/algorithm confusion risk**
+   - Impact: accepting unknown signature scheme, wrong major version, or fallback behavior can create verification bypass paths.
+   - Evidence: mitigated in strict verifier and normative profile, but not uniformly asserted by parser-level validation.
+   - Recommendation: require explicit allowlist + unknown-major-version rejection as conformance gate.
 
-3. **Discovery poisoning exposure**  
-   Discovery records/cards have no signed-attestation requirement and no trust tiering guidance.
+### Medium
 
-4. **Message ordering not normatively defined**  
-   No sequence semantics for multi-part workflows; implementations may process out of intended order.
+1. **Timestamp validation semantics differ by API surface**
+   - Generic verifiers use absolute delta (past/future symmetric), strict verifier uses max age + future skew.
+   - This can produce inconsistent accept/reject behavior across deployments.
 
-## Code/Spec Mismatches
+2. **Schema/validation gaps at runtime boundary**
+   - TS `messageFromWire` validates only selected fields and leaves deep object validation to callers.
+   - This can permit malformed nested identities/contexts into business handlers if schema validation is skipped.
 
-- `ROAR-SPEC.md` signing body includes `from`, `to`, `context`, and `auth.timestamp`, while `spec/04-exchange.md` shows a reduced body (`id`, `intent`, `payload`) in the signing snippet.
-- Spec text mentions replay protection window but does not require a nonce/message-id dedup cache at receiver.
-- Ed25519 usage exists in SDKs, but normative trust-binding to DID documents/directories is not explicit in exchange-layer verification requirements.
+3. **Discovery poisoning risks under-specified**
+   - Discovery records are mutable and trust tiering/signature provenance is not fully normed.
+   - Federation path needs signed provenance/TTL/revocation requirements.
 
-## Normative Wording Improvements Applied
+4. **Message ordering semantics not normative**
+   - No protocol-level sequence constraints for workflows where ordering matters.
+   - Can cause race, stale update acceptance, and response confusion.
 
-Added to `spec/04-exchange.md`:
-- Mandatory signature scheme allowlist and rejection of unknown schemes.
-- Mandatory recipient DID binding.
-- Mandatory timestamp presence + max-age + max-future-skew behavior.
-- Mandatory replay cache keyed by message `id` for at least replay window.
-- Mandatory canonical body parity and fail-closed behavior.
-- Explicit key trust binding requirement (trusted DID/doc source, not message-only key).
+## 2) Code/Spec Mismatches
 
-## Conformance and Negative Test Recommendations
+1. **Signing body mismatch (fixed in this patch)**
+   - `spec/04-exchange.md` previously showed reduced HMAC body vs SDK and root spec full body.
+   - Now aligned with SDK behavior.
 
-- Add mandatory negative tests for:
-  - replay duplicate rejection
-  - recipient mismatch rejection
-  - future timestamp rejection
-  - signature tampering rejection
-- Maintain an interop matrix for Python↔TS and HMAC↔Ed25519 with pass/fail expectations for both positive and negative vectors.
+2. **Schema vs implementation mismatch for Ed25519 auth fields**
+   - Signers add `auth.public_key` for Ed25519.
+   - `spec/schemas/roar-message.json` only permits `signature` and `timestamp` (`additionalProperties: false`).
+   - This is an interoperability mismatch: Ed25519-signed messages with `public_key` violate schema.
 
-## Reference Verifier Patch
+3. **Normative profile stricter than baseline helpers**
+   - Strict verifier enforces replay cache/recipient binding/future skew.
+   - Basic `verify()` helpers do not enforce all of these, so teams may inadvertently run a weaker profile.
 
-Included a Python reference implementation (`StrictMessageVerifier`) that enforces:
-- scheme allowlist
-- recipient binding
-- timestamp age + future skew
-- replay cache via `IdempotencyGuard`
-- fail-closed verification result with explicit error codes
+## 3) Exact Spec Wording Improvements
 
-This is intended as a secure baseline for production receivers and as a target for conformance parity in other SDKs.
+Applied in `spec/04-exchange.md`:
+
+- Canonical body now explicitly includes:
+  - `id`, `from.did`, `to.did`, `intent`, `payload`, `context`, `auth.timestamp`.
+- Added normative deterministic canonicalization requirements:
+  - recursive key ordering,
+  - canonical numeric rendering,
+  - exact field coverage,
+  - golden-fixture validation recommendation.
+
+Additional wording recommended (not yet patched):
+
+1. **Schema/Ed25519 reconciliation**
+   > "Receivers **MUST NOT** trust `auth.public_key` unless independently bound to sender DID in a trusted identity record. If `auth.public_key` is present and mismatches trusted key material, message **MUST** be rejected."
+
+2. **Discovery trust tiering**
+   > "Federated discovery entries **MUST** carry signed provenance (origin DID + signature over card + timestamps). Unsigned third-party entries **MUST** be treated as untrusted hints and **MUST NOT** authorize privileged actions."
+
+3. **Ordering semantics for correlated flows**
+   > "For multi-message workflows, sender **SHOULD** include monotonic `context.sequence` and receiver **MUST** reject stale or duplicate sequence values within a session when ordering is required by intent semantics."
+
+4. **Version downgrade protection**
+   > "Receivers **MUST** reject unknown major protocol versions. Receivers **MUST NOT** silently reinterpret unsupported versions as `1.0`."
+
+## 4) Conformance & Negative Tests
+
+### Added in this patch
+- Expanded `tests/check_strict_verifier.py` with negative invariants for:
+  - unsupported signature scheme rejection,
+  - missing `auth.timestamp` rejection.
+
+### Recommended next additions
+- Cross-SDK matrix runner that executes all positive/negative vectors in both directions:
+  - Python signer → TS verifier; TS signer → Python verifier,
+  - HMAC and Ed25519.
+- Dedicated downgrade vectors:
+  - unknown signature scheme,
+  - unknown major `roar` version,
+  - omitted `auth.timestamp`,
+  - mismatched `to.did`.
+- Schema-negative fixture set:
+  - extra top-level fields,
+  - malformed nested `from`/`to`,
+  - auth object with forbidden/ambiguous keys.
+
+## 5) Reference Verifier Guidance
+
+`StrictMessageVerifier` is a strong baseline policy gate. Teams should place it at transport ingress and only dispatch messages to intent handlers when `VerificationResult.ok == True`.
+
+Minimum production profile:
+- fixed scheme allowlist,
+- receiver DID binding,
+- max age + future skew check,
+- replay cache with TTL >= replay window,
+- trusted key resolution via DID/doc/directory.
