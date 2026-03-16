@@ -1,6 +1,6 @@
 {
   "name": "@roar-protocol/sdk",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "TypeScript SDK for the ROAR Protocol (Real-time Open Agent Runtime)",
   "type": "module",
   "main": "dist/index.js",

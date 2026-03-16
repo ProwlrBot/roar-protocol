@@ -2,7 +2,7 @@
 
 > Status of Python and TypeScript SDK implementations relative to the spec.
 
-Last updated: 2026-03-16 (v0.3.1 — both SDKs complete, Hub/federation shipped, security hardened)
+Last updated: 2026-03-16 (v0.3.2 — RedisTokenStore, AgentCard attestation, full security hardening)
 
 ---
 

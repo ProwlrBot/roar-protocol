@@ -6,7 +6,7 @@ Format: `[version] — date — description`
 
 ---
 
-## [Python SDK 0.3.1] — 2026-03-16
+## [Python SDK 0.3.2] — 2026-03-16
 
 ### Added
 
@@ -19,7 +19,7 @@ Format: `[version] — date — description`
 
 ---
 
-## [TypeScript SDK 0.3.1] — 2026-03-16
+## [TypeScript SDK 0.3.2] — 2026-03-16
 
 ### Added
 

@@ -11,8 +11,8 @@
   },
   "compatibility": {
     "prowlrbot": ">=0.1.0",
-    "python_sdk_min_version": "0.3.1",
-    "ts_sdk_min_version": "0.3.1",
+    "python_sdk_min_version": "0.3.2",
+    "ts_sdk_min_version": "0.3.2",
     "mcp_bridge": true,
     "a2a_bridge": true,
     "acp_bridge": false
@@ -25,7 +25,7 @@
       "connect": "complete (HTTP, WS, stdio)",
       "exchange": "complete",
       "stream": "complete (EventBus, SSE)",
-      "notes": "StrictMessageVerifier added in 0.3.1. InMemoryTokenStore + RedisTokenStore."
+      "notes": "RedisTokenStore + AgentCard attestation added in 0.3.2."
     },
     "typescript": {
       "overall": "complete",
@@ -35,7 +35,7 @@
       "connect": "complete (HTTP, WS, stdio)",
       "exchange": "complete",
       "stream": "complete",
-      "notes": "StrictMessageVerifier added in 0.3.1. ROARHub added in 0.3.1."
+      "notes": "ROARHub + signAgentCard/verifyAgentCard + RedisTokenStore added in 0.3.2."
     }
   }
 }
