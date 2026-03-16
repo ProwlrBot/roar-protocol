@@ -11,31 +11,31 @@
   },
   "compatibility": {
     "prowlrbot": ">=0.1.0",
-    "python_sdk_min_version": "0.1.0",
-    "ts_sdk_min_version": null,
+    "python_sdk_min_version": "0.3.1",
+    "ts_sdk_min_version": "0.3.1",
     "mcp_bridge": true,
     "a2a_bridge": true,
     "acp_bridge": false
   },
   "sdk_status": {
     "python": {
-      "overall": "70%",
+      "overall": "complete",
       "identity": "complete",
-      "discovery": "complete (in-memory), partial (federated)",
+      "discovery": "complete (in-memory + hub + federation)",
       "connect": "complete (HTTP, WS, stdio)",
       "exchange": "complete",
       "stream": "complete (EventBus, SSE)",
-      "notes": "Ed25519 signing defined but not enforced end-to-end. ACP adapter is a stub."
+      "notes": "StrictMessageVerifier added in 0.3.1. InMemoryTokenStore + RedisTokenStore."
     },
     "typescript": {
       "overall": "complete",
       "conformance": "30/30 checks passing",
       "identity": "complete",
-      "discovery": "complete",
-      "connect": "complete",
+      "discovery": "complete (in-memory + hub + federation)",
+      "connect": "complete (HTTP, WS, stdio)",
       "exchange": "complete",
       "stream": "complete",
-      "notes": "All field names and enum values align with Python SDK. SDK version moving to 0.3.0."
+      "notes": "StrictMessageVerifier added in 0.3.1. ROARHub added in 0.3.1."
     }
   }
 }

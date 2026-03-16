@@ -111,3 +111,9 @@ export type { DiscoveryCacheStats } from "./discovery_cache.js";
 // Strict reference verifier (Layer 4 — production receivers)
 export { StrictMessageVerifier } from "./verifier.js";
 export type { VerificationResult, StrictMessageVerifierOptions } from "./verifier.js";
+
+// Hub / Federation (Layer 2)
+export { ROARHub } from "./hub.js";
+export type { ROARHubOptions } from "./hub.js";
+export { ChallengeStore } from "./hub_auth.js";
+export type { PendingChallenge } from "./hub_auth.js";
