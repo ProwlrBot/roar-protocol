@@ -214,7 +214,7 @@ class TestBindCheckOrder:
         response = asyncio.get_event_loop().run_until_complete(server.handle_message(msg))
 
         # Bind check must have fired
-        assert response.payload.get("error") == "delegation_bind_mismatch"
+        assert response.payload.get("error") == "delegation_token_unauthorized"
         # Resolver must NOT have been called
         assert resolver_called == [], "Resolver was called before bind check!"
 
