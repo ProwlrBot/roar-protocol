@@ -6,6 +6,25 @@ Format: `[version] — date — description`
 
 ---
 
+## [Python SDK 0.3.1] — 2026-03-16
+
+### Added
+
+- `StrictMessageVerifier` — production-grade reference verifier enforcing scheme allowlist, recipient DID binding, directional timestamp checks (age + future skew), and replay detection via `IdempotencyGuard`
+- `VerificationResult` dataclass with `ok: bool` and `error: str` fields
+
+---
+
+## [TypeScript SDK 0.3.1] — 2026-03-16
+
+### Added
+
+- `StrictMessageVerifier` — mirrors Python implementation; exported from `@roar-protocol/sdk`
+- `VerificationResult` and `StrictMessageVerifierOptions` interfaces
+- `tests/check_strict_verifier.mjs` — 8 invariant checks mirroring Python test
+
+---
+
 ## [Python SDK 0.3.0] — 2026-03-16
 
 ### Security (audit fixes)
