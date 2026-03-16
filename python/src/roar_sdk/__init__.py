@@ -69,6 +69,7 @@ from .sqlite_directory import SQLiteAgentDirectory
 from .discovery_cache import DiscoveryCache
 from .dedup import IdempotencyGuard
 from .autonomy import AutonomyLevel, CapabilityDelegation, RuntimeToken
+from .verifier import StrictMessageVerifier, VerificationResult
 
 __all__ = [
     # Layer 1
@@ -126,4 +127,7 @@ __all__ = [
     "RuntimeToken",
     # Deduplication
     "IdempotencyGuard",
+    # Strict verification
+    "StrictMessageVerifier",
+    "VerificationResult",
 ]

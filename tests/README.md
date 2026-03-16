@@ -101,3 +101,14 @@ When the spec adds a new type or changes wire format:
 3. Add to `tests/conformance/golden/`
 4. Bump `spec/VERSION.json`
 5. Update all SDK conformance test runners
+
+
+## Security Negative Tests
+
+Run strict verification invariants (replay, recipient-binding, future timestamp, tamper):
+
+```bash
+python3 tests/check_strict_verifier.py
+```
+
+See `tests/interop-matrix.md` for required cross-SDK security outcomes.
