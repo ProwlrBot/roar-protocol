@@ -81,13 +81,29 @@ The Exchange layer defines the universal message format for all ROAR communicati
 
 ```python
 canonical = json.dumps(
-    {"id": msg.id, "intent": msg.intent, "payload": msg.payload},
+    {
+        "id": msg.id,
+        "from": msg.from_identity.did,
+        "to": msg.to_identity.did,
+        "intent": msg.intent,
+        "payload": msg.payload,
+        "context": msg.context,
+        "timestamp": msg.auth.get("timestamp", msg.timestamp),
+    },
     sort_keys=True,
 )
 signature = hmac.new(secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
 ```
 
 Stored as: `"hmac-sha256:<hex_digest>"`
+
+Canonical serialization is security critical. Implementations **MUST** use a deterministic encoder that preserves:
+
+- Recursive lexical key ordering.
+- Canonical numeric rendering that is interoperable across SDKs.
+- Exact field coverage above (no omissions and no additional fields).
+
+Implementations **SHOULD** validate canonicalization against shared golden fixtures in `tests/conformance/golden/signature.json`.
 
 ---
 
