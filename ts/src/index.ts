@@ -107,3 +107,7 @@ export type { RuntimeToken } from "./autonomy.js";
 // Discovery cache — TTL + LRU (Layer 2)
 export { DiscoveryCache } from "./discovery_cache.js";
 export type { DiscoveryCacheStats } from "./discovery_cache.js";
+
+// Strict reference verifier (Layer 4 — production receivers)
+export { StrictMessageVerifier } from "./verifier.js";
+export type { VerificationResult, StrictMessageVerifierOptions } from "./verifier.js";
