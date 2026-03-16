@@ -19,6 +19,8 @@ jobs:
           cache-dependency-path: ts/package-lock.json
       - run: npm ci
         working-directory: ts
+      - run: npm run build
+        working-directory: ts
       - run: npx tsc --noEmit
         working-directory: ts
       - run: node tests/validate_golden.mjs
@@ -40,4 +42,43 @@ jobs:
       - run: pytest tests/conformance/ -v
         working-directory: .
       - run: python tests/check_versions.py
+        working-directory: .
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install security tooling
+        run: pip install bandit pip-audit
+      - name: bandit — Python AST security linter (MEDIUM+ only)
+        # Exclude B104 (bind all interfaces — intentional for ROARHub) and
+        # B107 (hardcoded password — default-empty signing_secret is documented).
+        # Only fail on MEDIUM/HIGH severity findings.
+        run: |
+          bandit -r python/src/roar_sdk/ \
+            --severity-level medium \
+            --skip B104,B107,B101,B110 \
+            -f txt
+        working-directory: .
+      - name: pip-audit — dependency vulnerability scan (SDK deps only)
+        # Audit only the roar-sdk package's direct dependency graph.
+        # The --skip-editable flag skips the editable install itself
+        # while still scanning its declared dependencies via --local.
+        run: |
+          pip install -e ".[dev]" --quiet
+          pip-audit --local --skip-editable
+        working-directory: python
+      - name: semgrep — pattern-based SAST (best-effort, non-blocking)
+        run: |
+          pip install semgrep --quiet 2>/dev/null || true
+          if command -v semgrep &>/dev/null; then
+            semgrep scan --config=auto python/src/roar_sdk/ ts/src/ \
+              --severity=ERROR --error 2>&1 | head -100 || true
+          else
+            echo "semgrep not available, skipping"
+          fi
         working-directory: .

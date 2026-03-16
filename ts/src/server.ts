@@ -274,10 +274,11 @@ export class ROARServer {
             const response = await this.handleMessage(msg);
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify(messageToWire(response)));
-          } catch (err) {
+          } catch {
+            // Do not surface parse/validation details — they may expose schema info.
             res.writeHead(400, { "Content-Type": "application/json" });
             res.end(
-              JSON.stringify({ error: "invalid_message", detail: String(err) }),
+              JSON.stringify({ error: "invalid_message", detail: "Request body is not a valid ROAR message." }),
             );
           }
         });

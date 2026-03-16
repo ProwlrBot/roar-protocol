@@ -6,14 +6,14 @@
  *   node tests/verify_cross_sdk.mjs <message-json-path> <hmac-secret>
  *
  * Reads a ROARMessage JSON file, verifies its HMAC-SHA256 signature using the
- * TypeScript SDK, and exits 0 on success or 1 on failure.
+ * TypeScript SDK compiled output (ts/dist/), and exits 0 on success or 1 on failure.
  *
- * This script uses source imports (../../ts/src/) so it works without a build
- * step. It is only used for internal conformance testing.
+ * Requires: npm run build in ts/ before running.
  */
 
 import { readFileSync } from "fs";
-import { verifyMessage } from "../ts/src/message.js";
+import { messageFromWire } from "../ts/dist/types.js";
+import { verifyMessage } from "../ts/dist/message.js";
 
 const [, , msgPath, secret] = process.argv;
 
@@ -30,7 +30,17 @@ try {
   process.exit(1);
 }
 
-const ok = verifyMessage(wire, secret, { maxAgeSeconds: 86400 });
+let msg;
+try {
+  msg = messageFromWire(wire);
+} catch (err) {
+  console.error(`Failed to parse ROAR message from wire format: ${err.message}`);
+  process.exit(1);
+}
+
+// maxAgeSeconds=0 disables the replay-window check, matching Python's
+// max_age_seconds=0 used in validate_golden.py for static fixture verification.
+const ok = verifyMessage(msg, secret, 0);
 
 if (ok) {
   console.log("ROAR cross-SDK verify: OK");

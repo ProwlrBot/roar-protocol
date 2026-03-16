@@ -17,6 +17,7 @@ import { ROARServer } from "./server.js";
 import { StreamEventType } from "./types.js";
 import { messageFromWire, messageToWire } from "./types.js";
 import { IdempotencyGuard } from "./dedup.js";
+import { verifyMessage } from "./message.js";
 
 // ---------------------------------------------------------------------------
 // TokenBucket — sliding-window rate limiter
@@ -374,9 +375,10 @@ export function createROARRouter(
           const response = await server.handleMessage(msg);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify(messageToWire(response)));
-        } catch (err) {
+        } catch {
+          // Do not surface parse/validation details — they may expose schema info.
           res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: "invalid_message", detail: String(err) }));
+          res.end(JSON.stringify({ error: "invalid_message", detail: "Request body is not a valid ROAR message." }));
         }
       });
       return true;
@@ -469,6 +471,12 @@ export function createROARRouter(
         try {
           const msg = messageFromWire(raw);
 
+          // HMAC signature check (mirrors HTTP path).
+          if (server["_signingSecret"] && !verifyMessage(msg, server["_signingSecret"] as string)) {
+            wsSendText(socket, JSON.stringify({ type: "error", message: "signature_invalid" }));
+            continue;
+          }
+
           // Replay protection
           if (_dedup.is_duplicate(msg.id)) {
             wsSendText(socket, JSON.stringify({ type: "error", message: "duplicate_message_id" }));
@@ -477,8 +485,9 @@ export function createROARRouter(
 
           const response = await server.handleMessage(msg);
           wsSendText(socket, JSON.stringify(messageToWire(response)));
-        } catch (err) {
-          wsSendText(socket, JSON.stringify({ type: "error", message: String(err) }));
+        } catch {
+          // Do not surface exception details to callers — they may reveal internal state.
+          wsSendText(socket, JSON.stringify({ type: "error", message: "processing_error" }));
         }
       }
     });

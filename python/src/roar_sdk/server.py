@@ -251,6 +251,10 @@ class ROARServer:
         app = FastAPI(title=f"ROAR Agent: {self._identity.display_name}")
         server_ref = self
 
+        # Replay-protection guard (bounded; see dedup.py for eviction details).
+        from .dedup import IdempotencyGuard as _IdempotencyGuard
+        _serve_dedup = _IdempotencyGuard(max_keys=10_000, ttl_seconds=600.0)
+
         @app.post("/roar/message")
         async def receive_message(request: Request):
             MAX_BODY_BYTES = 1_048_576  # 1 MiB
@@ -273,8 +277,15 @@ class ROARServer:
                 )
 
             import json as _json
-            body = _json.loads(raw_body)
-            msg = ROARMessage(**body)
+            try:
+                body = _json.loads(raw_body)
+                msg = ROARMessage(**body)
+            except Exception:
+                # Do not surface parse/validation details — they may expose schema info
+                return JSONResponse(
+                    {"error": "invalid_message", "message": "Request body is not a valid ROAR message."},
+                    status_code=400,
+                )
 
             if server_ref._signing_secret:
                 if not msg.verify(server_ref._signing_secret, max_age_seconds=300):
@@ -282,6 +293,13 @@ class ROARServer:
                         {"error": "invalid_signature", "message": "HMAC verification failed"},
                         status_code=401,
                     )
+
+            # Replay protection — reject messages with a previously seen ID.
+            if _serve_dedup.is_duplicate(msg.id):
+                return JSONResponse(
+                    {"error": "duplicate_message", "message": "Message already processed."},
+                    status_code=409,
+                )
 
             response = await server_ref.handle_message(msg)
             return response.model_dump(by_alias=True)

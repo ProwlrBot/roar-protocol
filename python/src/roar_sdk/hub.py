@@ -84,10 +84,34 @@ class ROARHub:
 
         # ── Agent registration ────────────────────────────────────────────
 
+        _MAX_BODY = 256 * 1024  # 256 KiB — sufficient for any AgentCard
+
+        async def _read_bounded_json(request: Request) -> Optional[dict]:
+            """Read and parse the request body with a hard size cap.
+
+            Returns the parsed dict or None if the body is too large or unparseable.
+            """
+            import json as _json
+            raw = await request.body()
+            if len(raw) > _MAX_BODY:
+                return None
+            try:
+                data = _json.loads(raw)
+                if not isinstance(data, dict):
+                    return None
+                return data
+            except Exception:
+                return None
+
         @app.post("/roar/agents/register")
         async def register(request: Request):
-            body = await request.json()
-            card = AgentCard(**body)
+            body = await _read_bounded_json(request)
+            if body is None:
+                raise HTTPException(status_code=400, detail="Invalid or oversized request body")
+            try:
+                card = AgentCard(**body)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid AgentCard payload")
             entry = hub._directory.register(card)
             entry.hub_url = hub._hub_url
             logger.info("Registered: %s", card.identity.did)
@@ -120,7 +144,9 @@ class ROARHub:
         @app.post("/roar/federation/sync")
         async def receive_sync(request: Request):
             """Accept a batch of DiscoveryEntry objects from a peer hub."""
-            body = await request.json()
+            body = await _read_bounded_json(request)
+            if body is None:
+                raise HTTPException(status_code=400, detail="Invalid or oversized request body")
             entries = body.get("entries", [])
             imported = 0
             for raw in entries:
