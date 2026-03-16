@@ -19,6 +19,9 @@ import {
 import { createMessage, verifyMessage } from "./message.js";
 import { EventBus } from "./streaming.js";
 import { StreamEvent } from "./types.js";
+import { DIDResolutionError, resolveDidToPublicKey } from "./did_resolver.js";
+import { InMemoryTokenStore, TokenStore } from "./token_store.js";
+import { DelegationToken, isTokenValid, verifyToken } from "./delegation.js";
 
 type HandlerFunc = (
   msg: ROARMessage,
@@ -31,6 +34,7 @@ export interface ROARServerOptions {
   description?: string;
   skills?: string[];
   channels?: string[];
+  tokenStore?: TokenStore;
 }
 
 export class ROARServer {
@@ -44,6 +48,7 @@ export class ROARServer {
   private _handlers = new Map<MessageIntent, HandlerFunc>();
   private _eventBus = new EventBus();
   private _httpServer: http.Server | null = null;
+  private _tokenStore: TokenStore;
 
   constructor(identity: AgentIdentity, opts: ROARServerOptions = {}) {
     this._identity = identity;
@@ -53,6 +58,10 @@ export class ROARServer {
     this._description = opts.description ?? "";
     this._skills = opts.skills ?? [];
     this._channels = opts.channels ?? [];
+    // Server-authoritative token use-count store.
+    // The delegate's claimed use_count in the wire payload is ignored;
+    // this store is the only source of truth for max_uses enforcement.
+    this._tokenStore = opts.tokenStore ?? new InMemoryTokenStore();
   }
 
   get identity(): AgentIdentity {
@@ -82,6 +91,113 @@ export class ROARServer {
   }
 
   async handleMessage(msg: ROARMessage): Promise<ROARMessage> {
+    // Delegation token enforcement
+    const rawToken = msg.context["delegation_token"];
+    if (rawToken) {
+      const token = rawToken as DelegationToken;
+
+      // SECURITY INVARIANT 1: bind check MUST run before signature verification.
+      if (token.delegate_did !== msg.from_identity.did) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          {
+            error: "delegation_bind_mismatch",
+            message: "Token delegate_did does not match sender DID.",
+          },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Expiry check (before consuming a use from the store)
+      if (token.expires_at !== null && Date.now() / 1000 > token.expires_at) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          {
+            error: "delegation_token_exhausted",
+            message: "Token expired or use limit reached.",
+          },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Atomic use-count check + increment via the configured store.
+      const allowed = await this._tokenStore.getAndIncrement(
+        token.token_id,
+        token.max_uses,
+      );
+      if (!allowed) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          {
+            error: "delegation_token_exhausted",
+            message: "Token expired or use limit reached.",
+          },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Determine the delegator's public key for signature verification.
+      // SECURITY INVARIANT 2: NEVER use context["delegator_public_key"] —
+      // that field is attacker-controlled.
+      let delegatorPublicKey: string;
+      if (msg.from_identity.did === token.delegator_did) {
+        // Same-party delegation: sender IS the delegator, use their key directly.
+        const pk = msg.from_identity.public_key;
+        if (!pk) {
+          return createMessage(
+            this._identity,
+            msg.from_identity,
+            MessageIntent.RESPOND,
+            {
+              error: "delegation_unverifiable",
+              message: "No public key available for delegator DID.",
+            },
+            { in_reply_to: msg.id },
+          );
+        }
+        delegatorPublicKey = pk;
+      } else {
+        // 3-party delegation: resolve the delegator's DID to get their key.
+        // SECURITY INVARIANT 3: fail closed on resolution failure.
+        try {
+          delegatorPublicKey = await resolveDidToPublicKey(token.delegator_did);
+        } catch (e) {
+          if (e instanceof DIDResolutionError) {
+            return createMessage(
+              this._identity,
+              msg.from_identity,
+              MessageIntent.RESPOND,
+              {
+                error: "delegation_unverifiable",
+                message: `Could not resolve delegator DID: ${e.message}`,
+              },
+              { in_reply_to: msg.id },
+            );
+          }
+          throw e;
+        }
+      }
+
+      if (!verifyToken(token, delegatorPublicKey)) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          {
+            error: "invalid_delegation_signature",
+            message: "Delegation token signature is invalid.",
+          },
+          { in_reply_to: msg.id },
+        );
+      }
+    }
+
     const handler = this._handlers.get(msg.intent);
     if (!handler) {
       return createMessage(
