@@ -183,9 +183,9 @@ def test_redelegate_blocked_when_not_permitted():
     with _pt.raises(ValueError, match="re-delegation"):
         # middle tries to sub-delegate, passing the non-redelegatable parent
         issue_token(
-            delegator_identity=middle,
+            delegator_did=middle.did,
+            delegator_private_key="a" * 64,  # placeholder — guard fires before key use
             delegate_did=end.did,
             capabilities=["read"],
-            private_key_hex="a" * 64,  # placeholder — guard fires before key use
             parent_token=parent,
         )
