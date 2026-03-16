@@ -148,18 +148,31 @@ class ROARServer:
                     context={"in_reply_to": msg.id},
                 )
 
+            # Bind check: the presenting agent must be the named delegate.
+            # This prevents token theft — if Bob's token is stolen by Mallory,
+            # Mallory cannot present it because her DID won't match token.delegate_did.
+            if token.delegate_did != msg.from_identity.did:
+                return ROARMessage(
+                    **{"from": self._identity, "to": msg.from_identity},
+                    intent=MessageIntent.RESPOND,
+                    payload={"error": "delegation_token_unauthorized", "message": "Token was not issued to this agent."},
+                    context={"in_reply_to": msg.id},
+                )
+
             # Ed25519 signature verification on the delegation token.
-            # Try to obtain the delegator's public key from the message's from_identity
-            # (if the sender IS the delegator) or from context metadata. If no public key
-            # is available we cannot yet verify — this is known limitation C-3 (no DID
-            # resolver): once a DID resolver is in place, look up token.delegator_did to
-            # get the key and always verify. Until then, skip gracefully rather than
-            # silently reject valid tokens whose delegator key we don't have.
+            # The delegator's public key is obtained ONLY from the message's from_identity
+            # when the sender IS the delegator (sender DID == delegator DID). We never
+            # accept a public key from msg.context — that field is attacker-controlled and
+            # would allow a confused-deputy attack (attacker supplies their own key to
+            # verify a token they forged).
+            #
+            # When the sender is not the delegator (normal 3-party delegation: Alice → Bob
+            # → Charlie), we cannot verify without a DID resolver (C-3). In that case we
+            # reject rather than silently trust an unverifiable token. Once DID resolution
+            # is implemented, look up token.delegator_did and always verify.
             delegator_public_key: Optional[str] = None
             if msg.from_identity.did == token.delegator_did:
                 delegator_public_key = msg.from_identity.public_key
-            if delegator_public_key is None:
-                delegator_public_key = msg.context.get("delegator_public_key")
 
             if delegator_public_key:
                 try:
@@ -173,7 +186,15 @@ class ROARServer:
                 except ImportError:
                     # cryptography package not installed — skip Ed25519 verification
                     pass
-            # else: no public key resolvable (C-3: no DID resolver yet) — skip gracefully
+            elif msg.from_identity.did != token.delegator_did:
+                # Sender is not the delegator AND we have no DID resolver yet.
+                # Reject rather than silently accept an unverifiable token.
+                return ROARMessage(
+                    **{"from": self._identity, "to": msg.from_identity},
+                    intent=MessageIntent.RESPOND,
+                    payload={"error": "delegation_unverifiable", "message": "Cannot verify delegation token: delegator key not resolvable. Direct issuance (sender == delegator) required until DID resolution is supported."},
+                    context={"in_reply_to": msg.id},
+                )
 
             # Increment server-tracked count atomically (single-threaded coroutine).
             self._token_use_counts[token.token_id] = token.use_count + 1

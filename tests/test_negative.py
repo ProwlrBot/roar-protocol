@@ -189,3 +189,117 @@ def test_redelegate_blocked_when_not_permitted():
             capabilities=["read"],
             parent_token=parent,
         )
+
+
+# ---------------------------------------------------------------------------
+# 9. Token theft: presenting another agent's delegation token is rejected
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_stolen_token_rejected_by_server():
+    """A delegation token presented by an agent other than the delegate is rejected."""
+    import asyncio
+    from roar_sdk import ROARServer
+
+    issuer = AgentIdentity(display_name="issuer", capabilities=["delegate"])
+    bob = AgentIdentity(display_name="bob", capabilities=["delegate"])
+    mallory = AgentIdentity(display_name="mallory", capabilities=[])
+    server_agent = AgentIdentity(display_name="server", capabilities=[])
+
+    # Legitimate token issued to bob
+    bob_token = DelegationToken(
+        token_id="tok_bob_legitimate",
+        delegator_did=issuer.did,
+        delegate_did=bob.did,  # issued TO bob
+        capabilities=["read"],
+        issued_at=time.time(),
+        expires_at=time.time() + 3600,
+        max_uses=10,
+        use_count=0,
+        can_redelegate=False,
+        signature="placeholder",
+    )
+
+    server = ROARServer(server_agent)
+
+    @server.on(MessageIntent.DELEGATE)
+    def _handler(m):
+        return ROARMessage(
+            **{"from": server_agent, "to": m.from_identity},
+            intent=MessageIntent.RESPOND,
+            payload={"ok": True},
+        )
+
+    # Mallory presents Bob's token but sends from her own identity
+    msg = ROARMessage(
+        **{"from": mallory, "to": server_agent},  # sender = Mallory
+        intent=MessageIntent.DELEGATE,
+        payload={"task": "steal"},
+        context={"delegation_token": bob_token.model_dump()},  # Bob's token
+    )
+
+    response = await server.handle_message(msg)
+    assert response.payload.get("error") == "delegation_token_unauthorized", (
+        "Server must reject a token whose delegate_did does not match the sender's DID"
+    )
+
+
+# ---------------------------------------------------------------------------
+# 10. Confused-deputy: attacker-supplied public key in context must be ignored
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_attacker_supplied_public_key_in_context_rejected():
+    """msg.context['delegator_public_key'] must never be used for token verification."""
+    from roar_sdk import ROARServer
+
+    # Attacker generates their own identity (has a real DID)
+    attacker = AgentIdentity(display_name="attacker", capabilities=[])
+    victim = AgentIdentity(display_name="victim", capabilities=[])
+    server_agent = AgentIdentity(display_name="server", capabilities=[])
+
+    # Attacker forges a token claiming victim as delegator
+    forged_token = DelegationToken(
+        token_id="tok_forged",
+        delegator_did=victim.did,     # claims victim issued this
+        delegate_did=attacker.did,    # to attacker
+        capabilities=["admin"],
+        issued_at=time.time(),
+        expires_at=time.time() + 3600,
+        max_uses=None,
+        use_count=0,
+        can_redelegate=False,
+        signature="forged_sig",
+    )
+
+    server = ROARServer(server_agent)
+
+    @server.on(MessageIntent.DELEGATE)
+    def _handler(m):
+        return ROARMessage(
+            **{"from": server_agent, "to": m.from_identity},
+            intent=MessageIntent.RESPOND,
+            payload={"ok": True},
+        )
+
+    # Attacker sends message with forged token + their own public key in context
+    msg = ROARMessage(
+        **{"from": attacker, "to": server_agent},
+        intent=MessageIntent.DELEGATE,
+        payload={"task": "confused-deputy"},
+        context={
+            "delegation_token": forged_token.model_dump(),
+            # Attacker injects their own public key hoping the server uses it
+            "delegator_public_key": "aabbccddeeff" * 10,
+        },
+    )
+
+    response = await server.handle_message(msg)
+    # Server must reject: attacker != victim (delegator), so either
+    # delegation_token_unauthorized (delegate_did check) or delegation_unverifiable
+    assert response.payload.get("error") in (
+        "delegation_token_unauthorized",
+        "delegation_unverifiable",
+    ), (
+        f"Server must reject confused-deputy attack, got: {response.payload}"
+    )

@@ -130,12 +130,29 @@ export class ROARServer {
         );
       }
 
-      // Verify Ed25519 signature when a delegator public key is available.
-      // If not available (C-3: no DID resolver yet), skip gracefully.
+      // Bind check: the presenting agent must be the named delegate.
+      // Prevents token theft — a stolen token cannot be used by a different agent.
+      if (token.delegate_did !== msg.from_identity.did) {
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "delegation_token_unauthorized", message: "Token was not issued to this agent." },
+          { in_reply_to: msg.id },
+        );
+      }
+
+      // Ed25519 signature verification on the delegation token.
+      // Key is obtained ONLY from from_identity when sender IS the delegator.
+      // We never read a public key from msg.context — that field is attacker-controlled
+      // and accepting it would allow a confused-deputy attack.
+      //
+      // When sender != delegator (3-party delegation), we reject until a DID resolver
+      // (C-3) is available to look up the delegator's key from a trusted source.
       const delegatorPublicKey: string | undefined =
         msg.from_identity.did === token.delegator_did
           ? (msg.from_identity.public_key ?? undefined)
-          : (msg.context["delegator_public_key"] as string | undefined);
+          : undefined;
 
       if (delegatorPublicKey) {
         if (!verifyToken(token, delegatorPublicKey)) {
@@ -147,8 +164,16 @@ export class ROARServer {
             { in_reply_to: msg.id },
           );
         }
+      } else if (msg.from_identity.did !== token.delegator_did) {
+        // Sender is not the delegator and no DID resolver exists yet — reject.
+        return createMessage(
+          this._identity,
+          msg.from_identity,
+          MessageIntent.RESPOND,
+          { error: "delegation_unverifiable", message: "Cannot verify delegation token: delegator key not resolvable. Direct issuance (sender == delegator) required until DID resolution is supported." },
+          { in_reply_to: msg.id },
+        );
       }
-      // else: no public key resolvable (C-3: no DID resolver yet) — skip gracefully
 
       // Increment server-authoritative use count.
       this._tokenUseCounts.set(token.token_id, token.use_count + 1);
@@ -233,7 +258,7 @@ export class ROARServer {
             const raw = JSON.parse(body) as Record<string, unknown>;
             const msg = messageFromWire(raw);
 
-            if (this._signingSecret && msg.auth) {
+            if (this._signingSecret) {
               if (!verifyMessage(msg, this._signingSecret, 300)) {
                 res.writeHead(401, { "Content-Type": "application/json" });
                 res.end(
