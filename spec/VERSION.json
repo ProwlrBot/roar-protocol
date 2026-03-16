@@ -28,13 +28,14 @@
       "notes": "Ed25519 signing defined but not enforced end-to-end. ACP adapter is a stub."
     },
     "typescript": {
-      "overall": "30%",
-      "identity": "partial — field names diverge (agent_id vs did)",
-      "discovery": "not implemented",
-      "connect": "not implemented",
-      "exchange": "partial — enum values and field names diverge from spec",
-      "stream": "partial — StreamEventType enum values diverge",
-      "notes": "See SDK-ROADMAP.md for the full divergence table and open tasks."
+      "overall": "complete",
+      "conformance": "30/30 checks passing",
+      "identity": "complete",
+      "discovery": "complete",
+      "connect": "complete",
+      "exchange": "complete",
+      "stream": "complete",
+      "notes": "All field names and enum values align with Python SDK. SDK version moving to 0.3.0."
     }
   }
 }

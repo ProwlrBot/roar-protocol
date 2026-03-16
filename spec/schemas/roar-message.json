@@ -58,12 +58,16 @@
       "properties": {
         "signature": {
           "type": "string",
-          "description": "HMAC-SHA256 signature. Format: hmac-sha256:<hex>",
-          "pattern": "^hmac-sha256:[a-f0-9]{64}$"
+          "description": "Message signature. HMAC-SHA256 format: hmac-sha256:<64-char hex>. Ed25519 format: ed25519:<base64url>.",
+          "pattern": "^(hmac-sha256:[a-f0-9]{64}|ed25519:[A-Za-z0-9_-]+)$"
         },
         "timestamp": {
           "type": "number",
           "description": "Unix timestamp when signature was created. Used for replay protection."
+        },
+        "public_key": {
+          "type": "string",
+          "description": "Ed25519 signer public key (hex-encoded, 64 chars). Present only when the Ed25519 signing path is used; absent for HMAC-SHA256."
         }
       },
       "additionalProperties": false,
