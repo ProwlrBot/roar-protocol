@@ -86,18 +86,27 @@ class RedisTokenStore(TokenStore):
         )
         return self._client
 
+    # Lua script: atomic increment-if-below-limit with TTL.
+    # Returns the new count on success, -1 if limit exceeded.
+    # This prevents the race where INCR overshoots and permanently
+    # blacklists a legitimate token (SEC-001).
+    _LUA_INCR_IF_BELOW = """
+local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+if ARGV[1] == 'unlimited' or current < tonumber(ARGV[1]) then
+    local new_count = redis.call('INCR', KEYS[1])
+    redis.call('EXPIRE', KEYS[1], 86400)
+    return new_count
+else
+    return -1
+end
+"""
+
     def get_and_increment(self, token_id: str, max_uses: Optional[int]) -> bool:
         r = self._get_client()
         key = f"{self._prefix}{token_id}"
-        # Use pipeline with transaction for atomic INCR+EXPIRE (no race condition)
-        pipe = r.pipeline(transaction=True)
-        pipe.incr(key)
-        pipe.expire(key, 86400)
-        result = pipe.execute()
-        new_count = result[0]
-        if max_uses is not None and new_count > max_uses:
-            return False
-        return True
+        limit = str(max_uses) if max_uses is not None else "unlimited"
+        result = r.eval(self._LUA_INCR_IF_BELOW, 1, key, limit)
+        return int(result) != -1
 
     def get_count(self, token_id: str) -> int:
         r = self._get_client()

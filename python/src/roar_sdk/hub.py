@@ -231,7 +231,8 @@ class ROARHub:
             try:
                 card = AgentCard(**challenge.card)
             except Exception as exc:
-                return JSONResponse(status_code=400, content={"error": f"invalid card: {exc}"})
+                logger.warning("Card validation failed during challenge: %s", exc)
+                return JSONResponse(status_code=400, content={"error": "invalid_card_format"})
 
             entry = hub._directory.register(card)
             entry.hub_url = hub._hub_url

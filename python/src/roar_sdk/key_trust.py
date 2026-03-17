@@ -163,8 +163,12 @@ class KeyTrustStore:
             if not key.is_expired and not key.is_rotated:
                 key.rotated_at = now
                 key.replaced_by = new_public_key_hex
-                # Set expiry to grace period from now
-                key.expires_at = now + (self._rotation_grace * 3600)
+                # Grace period must not extend beyond original expiry (SEC-013)
+                grace_expiry = now + (self._rotation_grace * 3600)
+                if key.expires_at is not None:
+                    key.expires_at = min(key.expires_at, grace_expiry)
+                else:
+                    key.expires_at = grace_expiry
                 logger.info(
                     "Key for %s rotated — old key valid for %.0fh grace period",
                     did, self._rotation_grace,

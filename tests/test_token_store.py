@@ -128,31 +128,24 @@ class TestRedisTokenStore:
             assert store._client is None
 
     def test_get_and_increment_within_limit(self):
-        """With a mocked redis client, get_and_increment returns True within limit."""
-        redis = pytest.importorskip("redis")
-
-        mock_client = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [1, True]  # [INCR result, EXPIRE result]
-        mock_client.pipeline.return_value = mock_pipe
-
-        store = RedisTokenStore(key_prefix="test:")
-        store._client = mock_client  # inject mock
-
-        result = store.get_and_increment("tok_r1", 5)
-        assert result is True
-        mock_pipe.incr.assert_called_once_with("test:tok_r1")
-        mock_pipe.expire.assert_called_once_with("test:tok_r1", 86400)
-
-    def test_get_and_increment_exhausted(self):
-        """Returns False when new_count > max_uses."""
+        """Lua script returns new count when within limit."""
         pytest.importorskip("redis")
 
         mock_client = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [4, True]  # count=4 > max_uses=3
-        mock_client.pipeline.return_value = mock_pipe
+        mock_client.eval.return_value = 1  # Lua returns new count
+        store = RedisTokenStore(key_prefix="test:")
+        store._client = mock_client
 
+        result = store.get_and_increment("tok_r1", 5)
+        assert result is True
+        mock_client.eval.assert_called_once()
+
+    def test_get_and_increment_exhausted(self):
+        """Lua script returns -1 when limit exceeded (no overshoot)."""
+        pytest.importorskip("redis")
+
+        mock_client = MagicMock()
+        mock_client.eval.return_value = -1  # Lua returns -1 = rejected
         store = RedisTokenStore(key_prefix="test:")
         store._client = mock_client
 
@@ -160,19 +153,19 @@ class TestRedisTokenStore:
         assert result is False
 
     def test_get_and_increment_unlimited(self):
-        """max_uses=None always returns True."""
+        """max_uses=None passes 'unlimited' to Lua, always succeeds."""
         pytest.importorskip("redis")
 
         mock_client = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.execute.return_value = [999, True]
-        mock_client.pipeline.return_value = mock_pipe
-
+        mock_client.eval.return_value = 999
         store = RedisTokenStore(key_prefix="test:")
         store._client = mock_client
 
         result = store.get_and_increment("tok_r3", None)
         assert result is True
+        # Verify 'unlimited' was passed as the limit arg
+        call_args = mock_client.eval.call_args
+        assert call_args[0][3] == "unlimited"
 
     def test_get_count_returns_zero_for_missing_key(self):
         """get_count returns 0 when Redis returns None."""

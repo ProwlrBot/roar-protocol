@@ -186,42 +186,26 @@ class ROARServer:
                 )
 
             # Determine the delegator's public key for signature verification.
-            # SECURITY INVARIANT 2: NEVER use context["delegator_public_key"] —
-            # that field is attacker-controlled and accepting it would allow a
-            # confused-deputy attack (attacker supplies their own key to verify a forged token).
-            if msg.from_identity.did == token.delegator_did:
-                # Same-party delegation: sender IS the delegator, use their key directly.
-                delegator_public_key = msg.from_identity.public_key
-                if not delegator_public_key:
-                    return ROARMessage(
-                        **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
-                        intent=MessageIntent.RESPOND,
-                        payload={
-                            "error": "delegation_unverifiable",
-                            "message": "No public key available for delegator DID.",
-                        },
-                        context={"in_reply_to": msg.id},
-                    )
-            else:
-                # 3-party delegation: resolve the delegator's DID to get their key.
-                # SECURITY INVARIANT 3: fail closed on resolution failure.
-                try:
-                    delegator_public_key = resolve_did_to_public_key(token.delegator_did)
-                except DIDResolutionError as exc:
-                    logger.warning(
-                        "DID resolution failed for delegator '%s': %s",
-                        token.delegator_did,
-                        exc,
-                    )
-                    return ROARMessage(
-                        **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
-                        intent=MessageIntent.RESPOND,
-                        payload={
-                            "error": "delegation_unverifiable",
-                            "message": f"Could not resolve delegator DID: {exc}",
-                        },
-                        context={"in_reply_to": msg.id},
-                    )
+            # SECURITY INVARIANT 2: NEVER use msg.from_identity.public_key —
+            # that field is attacker-controlled. Always resolve from a trusted source.
+            # SECURITY INVARIANT 3: fail closed on resolution failure.
+            try:
+                delegator_public_key = resolve_did_to_public_key(token.delegator_did)
+            except DIDResolutionError as exc:
+                logger.warning(
+                    "DID resolution failed for delegator '%s': %s",
+                    token.delegator_did,
+                    exc,
+                )
+                return ROARMessage(
+                    **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
+                    intent=MessageIntent.RESPOND,
+                    payload={
+                        "error": "delegation_unverifiable",
+                        "message": "Could not resolve delegator DID.",
+                    },
+                    context={"in_reply_to": msg.id},
+                )
 
             try:
                 if not verify_token(token, delegator_public_key):

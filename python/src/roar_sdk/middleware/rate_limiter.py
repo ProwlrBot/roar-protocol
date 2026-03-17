@@ -67,16 +67,35 @@ class RedisRateLimiter(BaseHTTPMiddleware):
             self._client = None
             return None
 
+    # RFC 1918 + loopback networks for trusted proxy detection (SEC-010 fix)
+    _TRUSTED_NETS = None
+
+    @classmethod
+    def _get_trusted_nets(cls):
+        if cls._TRUSTED_NETS is None:
+            import ipaddress
+            cls._TRUSTED_NETS = [
+                ipaddress.ip_network("127.0.0.0/8"),
+                ipaddress.ip_network("10.0.0.0/8"),
+                ipaddress.ip_network("172.16.0.0/12"),  # RFC 1918, NOT 172.0.0.0/8
+                ipaddress.ip_network("192.168.0.0/16"),
+                ipaddress.ip_network("::1/128"),
+                ipaddress.ip_network("fc00::/7"),
+            ]
+        return cls._TRUSTED_NETS
+
     def _get_client_ip(self, request: Request) -> str:
-        """Extract client IP, only trusting X-Forwarded-For from known proxies."""
+        """Extract client IP, only trusting X-Forwarded-For from RFC 1918 proxies."""
+        import ipaddress
         client_ip = request.client.host if request.client else "unknown"
-        # Only trust X-Forwarded-For if the direct connection is from a known proxy
-        # (loopback, Docker bridge, or private networks behind nginx)
-        trusted_prefixes = ("127.", "10.", "172.", "192.168.", "::1")
-        if client_ip.startswith(trusted_prefixes):
-            forwarded = request.headers.get("x-forwarded-for")
-            if forwarded:
-                return forwarded.split(",")[0].strip()
+        try:
+            addr = ipaddress.ip_address(client_ip)
+            if any(addr in net for net in self._get_trusted_nets()):
+                forwarded = request.headers.get("x-forwarded-for")
+                if forwarded:
+                    return forwarded.split(",")[0].strip()
+        except ValueError:
+            pass
         return client_ip
 
     def _check_limit(self, r, key: str, limit: int, window: int) -> tuple[int, bool]:
