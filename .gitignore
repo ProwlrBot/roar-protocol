@@ -10,3 +10,4 @@ ts/dist/
 
 # Claude internal files
 .claude/
+.auto-claude/
