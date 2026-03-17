@@ -24,6 +24,7 @@ Usage:
 
 import asyncio
 import logging
+import os
 
 # ── Imports from the standalone roar-sdk package ────────────────────────────
 from roar_sdk import (
@@ -39,7 +40,7 @@ log = logging.getLogger("roar-client")
 
 # Server details — point at echo_server.py or prowlr app (:8088)
 SERVER_URL = "http://127.0.0.1:8089"
-SHARED_SECRET = "roar-example-shared-secret"
+SHARED_SECRET = os.environ.get("ROAR_SIGNING_SECRET", "")
 
 
 async def main() -> None:

@@ -18,7 +18,7 @@ import {
 // --- HMAC-SHA256 signing (symmetric, shared secret) ---
 const alice = createIdentity("alice", { capabilities: ["crypto"] });
 const bob = createIdentity("bob", { capabilities: ["crypto"] });
-const secret = "shared-secret-between-alice-and-bob";
+const secret = process.env.ROAR_SIGNING_SECRET || "quickstart-demo-key";
 
 const msg = signMessage(
   createMessage(alice, bob, MessageIntent.NOTIFY, {

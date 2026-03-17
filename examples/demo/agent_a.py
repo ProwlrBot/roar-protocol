@@ -12,6 +12,7 @@ Usage:
 """
 import asyncio
 import logging
+import os
 import sys, io
 import httpx
 
@@ -33,7 +34,7 @@ log = logging.getLogger("agent-a")
 
 HUB_URL = "http://127.0.0.1:8090"
 AGENT_PORT = 8091
-SECRET = "demo-shared-secret"
+SECRET = os.environ.get("ROAR_SIGNING_SECRET", "")
 
 # Generate Ed25519 keypair for identity
 PRIV_KEY, PUB_KEY = generate_keypair()

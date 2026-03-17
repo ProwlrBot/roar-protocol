@@ -3,13 +3,14 @@
 
 Run: python 03_signed_messages.py
 """
+import os
 from roar_sdk import AgentIdentity, MessageIntent, ROARMessage
 from roar_sdk.signing import generate_keypair, sign_ed25519, verify_ed25519
 
 # --- HMAC-SHA256 signing (symmetric, shared secret) ---
 alice = AgentIdentity(display_name="alice", capabilities=["crypto"])
 bob = AgentIdentity(display_name="bob", capabilities=["crypto"])
-secret = "shared-secret-between-alice-and-bob"
+secret = os.environ.get("ROAR_SIGNING_SECRET", "quickstart-demo-key")
 
 msg = ROARMessage(
     **{"from": alice, "to": bob},

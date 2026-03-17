@@ -3,6 +3,10 @@
 """ROAR Protocol — CLI Toolkit for hub and agent management.
 
 Usage:
+    roar init NAME              Scaffold a new agent project
+    roar keygen                 Generate HMAC + Ed25519 keys
+    roar test URL               Run conformance checks against a hub/agent
+
     roar hub start              Start a discovery hub
     roar hub health [URL]       Check hub health
     roar hub agents [URL]       List registered agents
@@ -185,6 +189,169 @@ def _health(args: argparse.Namespace) -> None:
         sys.exit(1)
 
 
+def _init_project(args: argparse.Namespace) -> None:
+    import os
+    name = args.name
+    if os.path.exists(name):
+        print(f"Error: directory '{name}' already exists", file=sys.stderr)
+        sys.exit(1)
+
+    os.makedirs(name)
+    if args.lang == "python":
+        with open(os.path.join(name, "agent.py"), "w") as f:
+            f.write(f'''#!/usr/bin/env python3
+"""ROAR agent: {name}"""
+import os
+from roar_sdk import AgentIdentity, ROARServer, ROARMessage, MessageIntent
+
+identity = AgentIdentity(
+    display_name="{name}",
+    agent_type="agent",
+    capabilities=["example"],
+)
+
+server = ROARServer(
+    identity=identity,
+    port=8089,
+    signing_secret=os.environ.get("ROAR_SIGNING_SECRET", ""),
+)
+
+@server.on(MessageIntent.DELEGATE)
+async def handle(msg: ROARMessage) -> ROARMessage:
+    return ROARMessage(
+        **{{"from": server.identity, "to": msg.from_identity}},
+        intent=MessageIntent.RESPOND,
+        payload={{"status": "ok"}},
+        context={{"in_reply_to": msg.id}},
+    )
+
+if __name__ == "__main__":
+    server.serve()
+''')
+        with open(os.path.join(name, ".env"), "w") as f:
+            f.write("ROAR_SIGNING_SECRET=\n")
+        with open(os.path.join(name, "requirements.txt"), "w") as f:
+            f.write("roar-sdk[server]\n")
+        print(f"Created '{name}/' with:")
+        print(f"  agent.py         — ROAR agent server")
+        print(f"  .env             — environment config (set your signing secret)")
+        print(f"  requirements.txt — dependencies")
+        print(f"\nNext steps:")
+        print(f"  cd {name}")
+        print(f"  roar keygen --type hmac  # generate a signing secret")
+        print(f"  pip install -r requirements.txt")
+        print(f"  python agent.py")
+    else:
+        with open(os.path.join(name, "agent.ts"), "w") as f:
+            f.write(f'''import {{ AgentIdentity, ROARMessage, MessageIntent }} from "@roar-protocol/sdk";
+
+const identity: AgentIdentity = {{
+  did: "",
+  display_name: "{name}",
+  agent_type: "agent",
+  capabilities: ["example"],
+  version: "1.0",
+}};
+
+console.log("Agent DID:", identity.did);
+''')
+        with open(os.path.join(name, "package.json"), "w") as f:
+            f.write(json.dumps({"name": name, "dependencies": {"@roar-protocol/sdk": "^0.3.0"}}, indent=2))
+        print(f"Created '{name}/' with agent.ts and package.json")
+        print(f"\nNext steps:")
+        print(f"  cd {name} && npm install && npx ts-node agent.ts")
+
+
+def _keygen(args: argparse.Namespace) -> None:
+    import secrets
+    output: list[str] = []
+
+    if args.key_type in ("hmac", "both"):
+        hmac_secret = secrets.token_urlsafe(32)
+        output.append(f"ROAR_SIGNING_SECRET={hmac_secret}")
+
+    if args.key_type in ("ed25519", "both"):
+        from .signing import generate_keypair
+        private_hex, public_hex = generate_keypair()
+        output.append(f"ROAR_ED25519_PRIVATE_KEY={private_hex}")
+        output.append(f"ROAR_ED25519_PUBLIC_KEY={public_hex}")
+
+    text = "\n".join(output)
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(text + "\n")
+        print(f"Keys written to {args.output}")
+    else:
+        print(text)
+
+
+def _test_endpoint(args: argparse.Namespace) -> None:
+    import httpx
+    url = args.url.rstrip("/")
+    passed = 0
+    failed = 0
+
+    def _check(name: str, fn):
+        nonlocal passed, failed
+        try:
+            fn()
+            print(f"  PASS  {name}")
+            passed += 1
+        except Exception as e:
+            print(f"  FAIL  {name}: {e}")
+            failed += 1
+
+    print(f"Testing {url} ...\n")
+
+    def check_health():
+        r = httpx.get(f"{url}/roar/health", timeout=5)
+        assert r.status_code == 200, f"status {r.status_code}"
+        data = r.json()
+        assert "status" in data, "missing 'status' field"
+
+    def check_agents():
+        r = httpx.get(f"{url}/roar/agents", timeout=5)
+        assert r.status_code == 200, f"status {r.status_code}"
+        data = r.json()
+        assert "agents" in data, "missing 'agents' field"
+
+    def check_message_rejects_unsigned():
+        from .types import AgentIdentity, ROARMessage, MessageIntent
+        sender = AgentIdentity(display_name="test-cli")
+        receiver = AgentIdentity(display_name="target")
+        msg = ROARMessage(
+            **{"from": sender, "to": receiver},
+            intent=MessageIntent.DELEGATE,
+            payload={"test": True},
+        )
+        r = httpx.post(f"{url}/roar/message", json=msg.model_dump(by_alias=True), timeout=5)
+        assert r.status_code in (401, 403, 422), f"unsigned message accepted (status {r.status_code})"
+
+    def check_message_signed():
+        if not args.secret:
+            raise AssertionError("skipped (no --secret provided)")
+        from .types import AgentIdentity, ROARMessage, MessageIntent
+        sender = AgentIdentity(display_name="test-cli")
+        receiver = AgentIdentity(display_name="target")
+        msg = ROARMessage(
+            **{"from": sender, "to": receiver},
+            intent=MessageIntent.DELEGATE,
+            payload={"test": True},
+        )
+        msg.sign(args.secret)
+        r = httpx.post(f"{url}/roar/message", json=msg.model_dump(by_alias=True), timeout=5)
+        assert r.status_code == 200, f"signed message rejected (status {r.status_code})"
+
+    _check("GET /roar/health returns 200", check_health)
+    _check("GET /roar/agents returns 200", check_agents)
+    _check("POST /roar/message rejects unsigned", check_message_rejects_unsigned)
+    _check("POST /roar/message accepts signed", check_message_signed)
+
+    print(f"\n{passed} passed, {failed} failed")
+    if failed:
+        sys.exit(1)
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog="roar",
@@ -235,6 +402,24 @@ def main(argv: list[str] | None = None) -> None:
     hlth = sub.add_parser("health", help="Check agent/hub health")
     hlth.add_argument("url", help="URL to check")
     hlth.set_defaults(func=_health)
+
+    # --- init command ---
+    init_p = sub.add_parser("init", help="Scaffold a new ROAR agent project")
+    init_p.add_argument("name", help="Agent project name")
+    init_p.add_argument("--lang", choices=["python", "typescript"], default="python")
+    init_p.set_defaults(func=_init_project)
+
+    # --- keygen command ---
+    kg = sub.add_parser("keygen", help="Generate signing keys")
+    kg.add_argument("--type", choices=["hmac", "ed25519", "both"], default="both", dest="key_type")
+    kg.add_argument("--output", default="", help="Write keys to file (default: stdout)")
+    kg.set_defaults(func=_keygen)
+
+    # --- test command ---
+    tst = sub.add_parser("test", help="Run conformance checks against a hub or agent")
+    tst.add_argument("url", help="Hub or agent URL to test")
+    tst.add_argument("--secret", default="", help="HMAC secret for signed tests")
+    tst.set_defaults(func=_test_endpoint)
 
     args = parser.parse_args(argv)
     if not args.command:

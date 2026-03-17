@@ -14,6 +14,7 @@ Usage:
 import asyncio
 import base64
 import logging
+import os
 import sys, io
 import httpx
 import json
@@ -35,7 +36,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s  %(mes
 log = logging.getLogger("agent-b")
 
 HUB_URL = "http://127.0.0.1:8090"
-SECRET = "demo-shared-secret"
+SECRET = os.environ.get("ROAR_SIGNING_SECRET", "")
 
 # Generate Ed25519 keypair
 PRIV_KEY, PUB_KEY = generate_keypair()

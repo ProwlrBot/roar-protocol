@@ -16,6 +16,7 @@ Usage:
 
 import asyncio
 import logging
+import os
 
 # ── Imports from the standalone roar-sdk package ────────────────────────────
 from roar_sdk import (
@@ -44,7 +45,7 @@ server = ROARServer(
     host="127.0.0.1",
     port=8089,
     description="Echoes DELEGATE messages back to the sender",
-    signing_secret="roar-example-shared-secret",
+    signing_secret=os.environ.get("ROAR_SIGNING_SECRET", ""),
 )
 
 

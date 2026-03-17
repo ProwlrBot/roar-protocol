@@ -44,7 +44,7 @@ for (const entry of results) {
 }
 
 // Send a signed message (Layer 4)
-const secret = "shared-secret";
+const secret = process.env.ROAR_SIGNING_SECRET || "quickstart-demo-key";
 const msg = signMessage(
   createMessage(coder, reviewer, MessageIntent.DELEGATE, {
     task: "review",

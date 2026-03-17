@@ -28,7 +28,7 @@ import {
 } from "@roar-protocol/sdk";
 
 const SERVER_URL = "http://127.0.0.1:8089/roar/message";
-const SHARED_SECRET = "roar-example-shared-secret";
+const SHARED_SECRET = process.env.ROAR_SIGNING_SECRET || "";
 
 // ── Step 1: Create a client identity ────────────────────────────────────────
 const clientIdentity = createIdentity("ts-client", {

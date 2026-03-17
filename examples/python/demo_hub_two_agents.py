@@ -12,6 +12,7 @@ Usage:
 import asyncio
 import json
 import logging
+import os
 import time
 
 import httpx
@@ -65,7 +66,7 @@ def box(title, lines, color=CYAN):
 HUB_PORT = 8090
 AGENT_A_PORT = 8091
 AGENT_B_PORT = 8092
-SECRET = "demo-shared-secret"
+SECRET = os.environ.get("ROAR_SIGNING_SECRET", "")
 
 async def run_demo():
     banner("ROAR PROTOCOL — LIVE DEMO", CYAN)

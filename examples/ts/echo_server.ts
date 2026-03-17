@@ -32,7 +32,7 @@ import {
 } from "@roar-protocol/sdk";
 
 const PORT = 8089;
-const SHARED_SECRET = "roar-example-shared-secret";
+const SHARED_SECRET = process.env.ROAR_SIGNING_SECRET || "";
 
 // ── Step 1: Give this server an identity ────────────────────────────────────
 const identity = createIdentity("echo-server", {

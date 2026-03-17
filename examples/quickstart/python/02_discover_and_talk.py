@@ -4,6 +4,7 @@
 Run: python 02_discover_and_talk.py
 """
 import asyncio
+import os
 from roar_sdk import (
     AgentIdentity,
     AgentCard,
@@ -36,10 +37,11 @@ msg = ROARMessage(
 )
 
 # Sign with HMAC-SHA256
-msg.sign("shared-secret")
+secret = os.environ.get("ROAR_SIGNING_SECRET", "quickstart-demo-key")
+msg.sign(secret)
 print(f"\nSigned message ID: {msg.id}")
 print(f"Signature: {msg.auth.get('signature', '')[:40]}...")
 
 # Verify
-assert msg.verify("shared-secret"), "Signature verification failed!"
+assert msg.verify(secret), "Signature verification failed!"
 print("Signature verified successfully.")
