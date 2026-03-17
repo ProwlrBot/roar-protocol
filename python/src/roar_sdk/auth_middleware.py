@@ -68,8 +68,14 @@ def _extract_api_key(request: Any) -> Optional[str]:
 
 
 def _verify_api_key(key: str, valid_keys: List[str]) -> bool:
-    """Constant-time comparison against all valid API keys."""
-    return any(_hmac.compare_digest(key, valid) for valid in valid_keys)
+    """Constant-time comparison against all valid API keys.
+
+    Compares against every key to avoid timing leaks from short-circuit.
+    """
+    result = False
+    for valid in valid_keys:
+        result |= _hmac.compare_digest(key, valid)
+    return result
 
 
 def _verify_jwt(token: str, secret: str) -> bool:
@@ -103,14 +109,13 @@ def require_auth(config: AuthConfig) -> Callable:
         raise ImportError(_MISSING_FASTAPI)
 
     async def _auth_dependency(request: Request) -> None:
-        # Skip auth for NONE strategy
+        # Skip auth for NONE strategy — always warn
         if config.strategy == AuthStrategy.NONE:
-            if config.allow_unauthenticated:
-                logger.warning(
-                    "AUTH DISABLED: request to %s allowed without authentication. "
-                    "Do not use in production!",
-                    request.url.path,
-                )
+            logger.warning(
+                "AUTH DISABLED: request to %s allowed without authentication. "
+                "Do not use in production!",
+                request.url.path,
+            )
             return
 
         # Skip auth for challenge-response endpoints (they ARE the auth)
