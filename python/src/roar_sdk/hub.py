@@ -319,7 +319,21 @@ class ROARHub:
 
         @app.post("/roar/federation/sync")
         async def receive_sync(request: Request):
-            """Accept a batch of DiscoveryEntry objects from a peer hub."""
+            """Accept a batch of DiscoveryEntry objects from a peer hub.
+
+            Requires Authorization header with federation secret.
+            """
+            import hmac as _hmac
+            fed_secret = _os.getenv("ROAR_FEDERATION_SECRET", "")
+            if fed_secret:
+                auth_header = request.headers.get("authorization", "")
+                if not auth_header.startswith("Bearer ") or not _hmac.compare_digest(
+                    auth_header[7:], fed_secret
+                ):
+                    raise HTTPException(status_code=401, detail="Invalid federation secret")
+            else:
+                logger.warning("ROAR_FEDERATION_SECRET not set — federation sync is unauthenticated")
+
             body = await _read_bounded_json(request)
             entries = body.get("entries", [])
             imported = 0
@@ -328,7 +342,7 @@ class ROARHub:
                     entry = DiscoveryEntry(**raw)
                     # Don't overwrite locally-registered agents
                     if not hub._directory.lookup(entry.agent_card.identity.did):
-                        hub._directory._agents[entry.agent_card.identity.did] = entry
+                        hub._directory.register(entry.agent_card)
                         imported += 1
                 except Exception as exc:
                     logger.warning("federation/sync: skipping entry: %s", exc)
@@ -346,12 +360,24 @@ class ROARHub:
 
         @app.get("/roar/health")
         async def health():
+            import os as _os
+            redis_status = "not_configured"
+            redis_url = _os.getenv("ROAR_REDIS_URL")
+            if redis_url:
+                try:
+                    import redis as _redis
+                    r = _redis.from_url(redis_url, socket_timeout=1.0, socket_connect_timeout=1.0)
+                    r.ping()
+                    redis_status = "connected"
+                except Exception:
+                    redis_status = "disconnected"
             return {
-                "status": "ok",
+                "status": "healthy",
                 "protocol": "roar/1.0",
                 "hub_url": hub._hub_url,
                 "agents": len(hub._directory.list_all()),
                 "peers": len(hub._peers),
+                "dependencies": {"redis": redis_status},
             }
 
         logger.info("ROAR Hub starting on http://%s:%d", self._host, self._port)

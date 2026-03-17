@@ -1,0 +1,40 @@
+# ROAR Protocol — Production Docker Image
+FROM python:3.13-slim AS base
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY python/pyproject.toml python/README.md ./python/
+COPY python/src/ ./python/src/
+RUN pip install --no-cache-dir ./python[server,monitoring,redis]
+
+# Copy spec and config files
+COPY spec/ ./spec/
+COPY ROAR-SPEC.md ./
+
+# Non-root user for security
+RUN useradd --create-home --shell /bin/bash roar
+USER roar
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/roar/health || exit 1
+
+# Workers = (2 * CPU_cores) + 1, defaulting to 3 for single-core
+# Override with GUNICORN_WORKERS env var
+ENV GUNICORN_WORKERS=3
+
+CMD gunicorn roar_sdk.asgi:app \
+    --workers ${GUNICORN_WORKERS} \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 120 \
+    --graceful-timeout 30 \
+    --access-logfile - \
+    --error-logfile -
