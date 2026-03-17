@@ -33,6 +33,9 @@ class ProtocolType(str, Enum):
     MCP = "mcp"
     A2A = "a2a"
     ACP = "acp"
+    AUTOGEN = "autogen"
+    CREWAI = "crewai"
+    LANGGRAPH = "langgraph"
     UNKNOWN = "unknown"
 
 
@@ -67,7 +70,14 @@ def detect_protocol(message: Dict[str, Any]) -> ProtocolType:
     if "roar" in message and "intent" in message:
         return ProtocolType.ROAR
 
-    # ACP message (session-based, role/content structure)
+    # AutoGen: role+content with tool_calls, function_call, or function/tool role
+    if "role" in message and "content" in message:
+        if "tool_calls" in message or "function_call" in message:
+            return ProtocolType.AUTOGEN
+        if message.get("role") in ("function", "tool") and "name" in message:
+            return ProtocolType.AUTOGEN
+
+    # ACP message (session-based, role/content structure — after AutoGen check)
     if "role" in message and "content" in message:
         return ProtocolType.ACP
 
@@ -92,5 +102,14 @@ def detect_protocol(message: Dict[str, Any]) -> ProtocolType:
     # A2A task envelope (no jsonrpc wrapper)
     if "status" in message and "id" in message and "artifacts" in message:
         return ProtocolType.A2A
+
+    # CrewAI: task with "description" + "expected_output"
+    if "description" in message and "expected_output" in message:
+        return ProtocolType.CREWAI
+
+    # LangGraph: state with "messages" list + "next" node
+    if "messages" in message and isinstance(message.get("messages"), list):
+        if "next" in message:
+            return ProtocolType.LANGGRAPH
 
     return ProtocolType.UNKNOWN
