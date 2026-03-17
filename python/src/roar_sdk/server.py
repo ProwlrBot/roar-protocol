@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import inspect
 import logging
+import os
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Union, cast
 
 from .did_resolver import DIDResolutionError, resolve_did_to_public_key
 from .streaming import EventBus
-from .token_store import InMemoryTokenStore, TokenStore
+from .token_store import InMemoryTokenStore, RedisTokenStore, TokenStore
 from .types import (
     AgentCard,
     AgentDirectory,
@@ -76,8 +77,26 @@ class ROARServer:
         # Server-authoritative token use-count store.
         # The delegate's claimed use_count in the wire payload is ignored;
         # this store is the only source of truth for max_uses enforcement.
-        # Use RedisTokenStore for multi-worker deployments (see token_store.py).
-        self._token_store: TokenStore = token_store or InMemoryTokenStore()
+        if token_store is not None:
+            self._token_store: TokenStore = token_store
+        else:
+            self._token_store = self._create_default_token_store()
+
+    @staticmethod
+    def _create_default_token_store() -> TokenStore:
+        """Create token store with Redis fallback to in-memory."""
+        redis_url = os.getenv("ROAR_REDIS_URL")
+        if redis_url:
+            try:
+                store = RedisTokenStore(redis_url=redis_url)
+                store._get_client().ping()
+                logger.info("Using RedisTokenStore at %s", redis_url)
+                return store
+            except Exception as exc:
+                logger.warning(
+                    "Redis unavailable (%s), falling back to InMemoryTokenStore", exc
+                )
+        return InMemoryTokenStore()
 
     @property
     def identity(self) -> AgentIdentity:
@@ -216,8 +235,19 @@ class ROARServer:
                         context={"in_reply_to": msg.id},
                     )
             except ImportError:
-                # cryptography package not installed — skip Ed25519 verification
-                pass
+                logger.error(
+                    "cryptography package not installed — cannot verify Ed25519 delegation token. "
+                    "Install with: pip install roar-sdk[ed25519]"
+                )
+                return ROARMessage(
+                    **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
+                    intent=MessageIntent.RESPOND,
+                    payload={
+                        "error": "delegation_unverifiable",
+                        "message": "Server cannot verify Ed25519 signatures (missing cryptography package).",
+                    },
+                    context={"in_reply_to": msg.id},
+                )
 
         handler = self._handlers.get(msg.intent)
         if handler is None:
@@ -271,9 +301,25 @@ class ROARServer:
         app = FastAPI(title=f"ROAR Agent: {self._identity.display_name}")
         server_ref = self
 
+        # Prometheus metrics (optional — requires monitoring extra)
+        try:
+            from prometheus_fastapi_instrumentator import Instrumentator
+            Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+        except ImportError:
+            pass
+
         # Replay-protection guard (bounded; see dedup.py for eviction details).
         from .dedup import IdempotencyGuard as _IdempotencyGuard
         _serve_dedup = _IdempotencyGuard(max_keys=10_000, ttl_seconds=600.0)
+
+        # StrictMessageVerifier for production message validation
+        from .verifier import StrictMessageVerifier as _StrictVerifier
+        _strict_verifier: _StrictVerifier | None = None
+        if server_ref._signing_secret:
+            _strict_verifier = _StrictVerifier(
+                hmac_secret=server_ref._signing_secret,
+                replay_guard=_serve_dedup,
+            )
 
         @app.post("/roar/message")
         async def receive_message(request: Request):
@@ -299,7 +345,7 @@ class ROARServer:
             import json as _json
             try:
                 body = _json.loads(raw_body)
-                msg = ROARMessage(**body)
+                msg = ROARMessage.model_validate(body)
             except Exception:
                 # Do not surface parse/validation details — they may expose schema info
                 return JSONResponse(
@@ -307,20 +353,29 @@ class ROARServer:
                     status_code=400,
                 )
 
-            # C-1 fix: check signing_secret alone — empty auth must not bypass HMAC.
-            if server_ref._signing_secret:
-                if not msg.verify(server_ref._signing_secret, max_age_seconds=300):
+            # Strict verification (covers signature, replay, timestamps)
+            if _strict_verifier is not None:
+                vr = _strict_verifier.verify(msg)
+                if not vr.ok:
+                    status = 401 if "signature" in vr.error else 400
                     return JSONResponse(
-                        {"error": "invalid_signature", "message": "HMAC verification failed"},
-                        status_code=401,
+                        {"error": "verification_failed", "message": vr.error},
+                        status_code=status,
                     )
-
-            # Replay protection — reject messages with a previously seen ID.
-            if _serve_dedup.is_duplicate(msg.id):
-                return JSONResponse(
-                    {"error": "duplicate_message", "message": "Message already processed."},
-                    status_code=409,
-                )
+            else:
+                # Fallback: basic signing secret check
+                if server_ref._signing_secret:
+                    if not msg.verify(server_ref._signing_secret, max_age_seconds=300):
+                        return JSONResponse(
+                            {"error": "invalid_signature", "message": "HMAC verification failed"},
+                            status_code=401,
+                        )
+                # Replay protection
+                if _serve_dedup.is_duplicate(msg.id):
+                    return JSONResponse(
+                        {"error": "duplicate_message", "message": "Message already processed."},
+                        status_code=409,
+                    )
 
             response = await server_ref.handle_message(msg)
             return response.model_dump(by_alias=True)

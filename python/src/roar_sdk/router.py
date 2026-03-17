@@ -31,6 +31,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSoc
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .types import ROARMessage
+from .verifier import StrictMessageVerifier, VerificationResult
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ def create_roar_router(
     server: Any,
     rate_limit: int = 0,
     auth_token: str = "",
+    strict_verifier: Optional[StrictMessageVerifier] = None,
 ) -> APIRouter:
     """Create a FastAPI router wired to a ROARServer.
 
@@ -150,18 +152,29 @@ def create_roar_router(
                 content={"error": "invalid_message", "detail": _safe_error(exc)},
             )
 
-        if server._signing_secret and not incoming.verify(server._signing_secret):
-            logger.warning("Signature verification failed for message %s", incoming.id)
-            return JSONResponse(
-                status_code=403,
-                content={"error": "signature_invalid", "detail": "HMAC signature verification failed."},
-            )
+        # Strict verification (if enabled) — covers signature, replay, timestamps
+        if strict_verifier is not None:
+            result = strict_verifier.verify(incoming)
+            if not result.ok:
+                logger.warning("StrictMessageVerifier rejected message %s: %s", incoming.id, result.error)
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": "verification_failed", "detail": result.error},
+                )
+        else:
+            # Fallback to basic signing secret check
+            if server._signing_secret and not incoming.verify(server._signing_secret):
+                logger.warning("Signature verification failed for message %s", incoming.id)
+                return JSONResponse(
+                    status_code=403,
+                    content={"error": "signature_invalid", "detail": "HMAC signature verification failed."},
+                )
 
-        if _check_replay(incoming.id):
-            return JSONResponse(
-                status_code=409,
-                content={"error": "duplicate_message", "detail": "Message already processed."},
-            )
+            if _check_replay(incoming.id):
+                return JSONResponse(
+                    status_code=409,
+                    content={"error": "duplicate_message", "detail": "Message already processed."},
+                )
 
         response = await server.handle_message(incoming)
         return response.model_dump(by_alias=True)

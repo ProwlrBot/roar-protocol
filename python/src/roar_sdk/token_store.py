@@ -78,17 +78,23 @@ class RedisTokenStore(TokenStore):
                 "RedisTokenStore requires the 'redis' package. "
                 "Install with: pip install roar-sdk[redis]"
             ) from exc
-        self._client = _redis.from_url(self._redis_url, decode_responses=True)
+        self._client = _redis.from_url(
+            self._redis_url,
+            decode_responses=True,
+            socket_timeout=2.0,
+            socket_connect_timeout=2.0,
+        )
         return self._client
 
     def get_and_increment(self, token_id: str, max_uses: Optional[int]) -> bool:
         r = self._get_client()
         key = f"{self._prefix}{token_id}"
-        # INCR is atomic; compare AFTER increment to decide if within limit
-        new_count = r.incr(key)
-        # Set TTL on first use (24h default — token data should expire naturally)
-        if new_count == 1:
-            r.expire(key, 86400)
+        # Use pipeline with transaction for atomic INCR+EXPIRE (no race condition)
+        pipe = r.pipeline(transaction=True)
+        pipe.incr(key)
+        pipe.expire(key, 86400)
+        result = pipe.execute()
+        new_count = result[0]
         if max_uses is not None and new_count > max_uses:
             return False
         return True

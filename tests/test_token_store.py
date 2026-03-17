@@ -132,39 +132,41 @@ class TestRedisTokenStore:
         redis = pytest.importorskip("redis")
 
         mock_client = MagicMock()
-        mock_client.incr.return_value = 1  # first use
-        mock_client.get.return_value = "1"
+        mock_pipe = MagicMock()
+        mock_pipe.execute.return_value = [1, True]  # [INCR result, EXPIRE result]
+        mock_client.pipeline.return_value = mock_pipe
 
         store = RedisTokenStore(key_prefix="test:")
         store._client = mock_client  # inject mock
 
         result = store.get_and_increment("tok_r1", 5)
         assert result is True
-        mock_client.incr.assert_called_once_with("test:tok_r1")
-        # TTL must be set on first use (newCount == 1)
-        mock_client.expire.assert_called_once_with("test:tok_r1", 86400)
+        mock_pipe.incr.assert_called_once_with("test:tok_r1")
+        mock_pipe.expire.assert_called_once_with("test:tok_r1", 86400)
 
     def test_get_and_increment_exhausted(self):
         """Returns False when new_count > max_uses."""
         pytest.importorskip("redis")
 
         mock_client = MagicMock()
-        mock_client.incr.return_value = 4  # already beyond max_uses=3
+        mock_pipe = MagicMock()
+        mock_pipe.execute.return_value = [4, True]  # count=4 > max_uses=3
+        mock_client.pipeline.return_value = mock_pipe
 
         store = RedisTokenStore(key_prefix="test:")
         store._client = mock_client
 
         result = store.get_and_increment("tok_r2", 3)
         assert result is False
-        # TTL must NOT be set — newCount != 1
-        mock_client.expire.assert_not_called()
 
     def test_get_and_increment_unlimited(self):
         """max_uses=None always returns True."""
         pytest.importorskip("redis")
 
         mock_client = MagicMock()
-        mock_client.incr.return_value = 999
+        mock_pipe = MagicMock()
+        mock_pipe.execute.return_value = [999, True]
+        mock_client.pipeline.return_value = mock_pipe
 
         store = RedisTokenStore(key_prefix="test:")
         store._client = mock_client
