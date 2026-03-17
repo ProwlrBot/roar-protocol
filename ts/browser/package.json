@@ -1,0 +1,46 @@
+{
+  "name": "@roar-protocol/sdk-browser",
+  "version": "0.3.2",
+  "description": "Browser/WASM SDK for the ROAR Protocol (Real-time Open Agent Runtime)",
+  "type": "module",
+  "main": "dist/index.js",
+  "browser": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --platform=browser",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "roar",
+    "protocol",
+    "agent",
+    "ai",
+    "sdk",
+    "browser",
+    "wasm",
+    "web-crypto"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ProwlrBot/roar-protocol.git"
+  },
+  "homepage": "https://github.com/ProwlrBot/roar-protocol#readme",
+  "bugs": {
+    "url": "https://github.com/ProwlrBot/roar-protocol/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0",
+    "typescript": "^5.4.0"
+  }
+}

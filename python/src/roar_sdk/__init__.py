@@ -63,6 +63,7 @@ from .token_store import InMemoryTokenStore, RedisTokenStore
 from .adapters import ACPAdapter
 from .adapters.detect import detect_protocol, ProtocolType
 from .hub import ROARHub
+from .registry import PublicRegistry, RegistryEntry
 from .did_document import DIDDocument, VerificationMethod, ServiceEndpoint
 from .did_key import DIDKeyMethod, DIDKeyIdentity
 from .did_web import DIDWebMethod, DIDWebIdentity
@@ -103,6 +104,8 @@ __all__ = [
     "ROARClient",
     "ROARServer",
     "ROARHub",
+    "PublicRegistry",
+    "RegistryEntry",
     # Streaming
     "EventBus",
     "StreamFilter",

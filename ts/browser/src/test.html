@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROAR Protocol Browser SDK — Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0d1117;
+      color: #c9d1d9;
+    }
+    h1 { color: #58a6ff; }
+    .test {
+      margin: 12px 0;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .pass { background: #0d2818; border-left: 4px solid #3fb950; }
+    .fail { background: #2d1115; border-left: 4px solid #f85149; }
+    .info { background: #161b22; border-left: 4px solid #58a6ff; }
+    #status {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 24px;
+      padding: 16px;
+      border-radius: 6px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>ROAR Protocol Browser SDK Test</h1>
+  <div id="results"></div>
+  <div id="status"></div>
+
+  <script type="module">
+    // Import from the built bundle (run `npm run build` first)
+    import {
+      createIdentity,
+      createMessage,
+      signMessageAsync,
+      verifyMessageAsync,
+      generateKeyPair,
+      signEd25519,
+      verifyEd25519,
+      MessageIntent,
+      AgentDirectory,
+    } from "../dist/index.js";
+
+    const results = document.getElementById("results");
+    const statusEl = document.getElementById("status");
+    let passed = 0;
+    let failed = 0;
+
+    function log(msg, type = "info") {
+      const div = document.createElement("div");
+      div.className = `test ${type}`;
+      div.textContent = msg;
+      results.appendChild(div);
+    }
+
+    function assert(condition, label) {
+      if (condition) {
+        passed++;
+        log(`PASS: ${label}`, "pass");
+      } else {
+        failed++;
+        log(`FAIL: ${label}`, "fail");
+      }
+    }
+
+    async function runTests() {
+      log("Starting ROAR Protocol Browser SDK tests...");
+
+      // --- Test 1: Create identity ---
+      const alice = createIdentity("Alice", {
+        agentType: "agent",
+        capabilities: ["chat", "search"],
+      });
+      assert(alice.did.startsWith("did:roar:agent:alice-"), "createIdentity generates DID");
+      assert(alice.display_name === "Alice", "createIdentity sets display_name");
+      assert(alice.capabilities.length === 2, "createIdentity sets capabilities");
+
+      const bob = createIdentity("Bob", { agentType: "tool" });
+      assert(bob.did.startsWith("did:roar:tool:bob-"), "createIdentity with tool type");
+
+      // --- Test 2: Create message ---
+      const msg = createMessage(alice, bob, MessageIntent.EXECUTE, {
+        action: "search",
+        query: "ROAR protocol",
+      });
+      assert(msg.id.startsWith("msg_"), "createMessage generates message ID");
+      assert(msg.roar === "1.0", "createMessage sets protocol version");
+      assert(msg.intent === "execute", "createMessage sets intent");
+      assert(msg.from_identity.did === alice.did, "createMessage sets from_identity");
+      assert(msg.to_identity.did === bob.did, "createMessage sets to_identity");
+      assert(msg.timestamp > 0, "createMessage sets timestamp");
+
+      // --- Test 3: HMAC sign and verify ---
+      const secret = "test-secret-key-12345";
+      const signed = await signMessageAsync(msg, secret);
+      assert(
+        typeof signed.auth["signature"] === "string" &&
+        (signed.auth["signature"] as string).startsWith("hmac-sha256:"),
+        "signMessageAsync sets HMAC signature"
+      );
+      assert(typeof signed.auth["timestamp"] === "number", "signMessageAsync sets auth timestamp");
+
+      const valid = await verifyMessageAsync(signed, secret, 0);
+      assert(valid === true, "verifyMessageAsync confirms valid signature");
+
+      const invalid = await verifyMessageAsync(signed, "wrong-secret", 0);
+      assert(invalid === false, "verifyMessageAsync rejects wrong secret");
+
+      // --- Test 4: Ed25519 key generation and signing ---
+      try {
+        const keyPair = await generateKeyPair();
+        assert(keyPair.privateKeyHex.length === 64, "generateKeyPair produces 32-byte private key");
+        assert(keyPair.publicKeyHex.length === 64, "generateKeyPair produces 32-byte public key");
+
+        const aliceWithKey = createIdentity("Alice Ed25519", {
+          publicKey: keyPair.publicKeyHex,
+        });
+
+        const edMsg = createMessage(aliceWithKey, bob, MessageIntent.ASK, {
+          question: "What is ROAR?",
+        });
+
+        const edSigned = await signEd25519(edMsg, keyPair.privateKeyHex);
+        assert(
+          typeof edSigned.auth["signature"] === "string" &&
+          (edSigned.auth["signature"] as string).startsWith("ed25519:"),
+          "signEd25519 sets Ed25519 signature"
+        );
+        assert(
+          edSigned.auth["public_key"] === keyPair.publicKeyHex,
+          "signEd25519 includes public key in auth"
+        );
+
+        const edValid = await verifyEd25519(edSigned, 0, keyPair.publicKeyHex);
+        assert(edValid === true, "verifyEd25519 confirms valid Ed25519 signature");
+
+        // Tamper with the message and verify it fails
+        edSigned.payload["question"] = "Tampered!";
+        const edTampered = await verifyEd25519(edSigned, 0, keyPair.publicKeyHex);
+        assert(edTampered === false, "verifyEd25519 rejects tampered message");
+      } catch (err) {
+        log(`Ed25519 tests skipped (browser may not support Ed25519 in Web Crypto): ${err}`, "fail");
+        failed++;
+      }
+
+      // --- Test 5: AgentDirectory ---
+      const directory = new AgentDirectory();
+      const card = {
+        identity: alice,
+        description: "Alice the search agent",
+        skills: ["search", "summarize"],
+        channels: ["http"],
+        endpoints: { http: "https://alice.example.com/roar" },
+        declared_capabilities: [],
+        metadata: {},
+      };
+      const entry = directory.register(card);
+      assert(entry.agent_card.identity.did === alice.did, "AgentDirectory registers card");
+
+      const found = directory.lookup(alice.did);
+      assert(found !== undefined, "AgentDirectory lookup finds registered agent");
+
+      const searchResults = directory.search("chat");
+      assert(searchResults.length === 1, "AgentDirectory search finds by capability");
+
+      const allAgents = directory.listAll();
+      assert(allAgents.length === 1, "AgentDirectory listAll returns all agents");
+
+      directory.unregister(alice.did);
+      assert(directory.lookup(alice.did) === undefined, "AgentDirectory unregister removes agent");
+
+      // --- Summary ---
+      log("");
+      const total = passed + failed;
+      if (failed === 0) {
+        statusEl.textContent = `All ${total} tests passed!`;
+        statusEl.style.background = "#0d2818";
+        statusEl.style.color = "#3fb950";
+      } else {
+        statusEl.textContent = `${passed}/${total} tests passed, ${failed} failed`;
+        statusEl.style.background = "#2d1115";
+        statusEl.style.color = "#f85149";
+      }
+    }
+
+    runTests().catch((err) => {
+      log(`Fatal error: ${err.message}`, "fail");
+      statusEl.textContent = "Tests failed with error";
+      statusEl.style.background = "#2d1115";
+      statusEl.style.color = "#f85149";
+    });
+  </script>
+</body>
+</html>

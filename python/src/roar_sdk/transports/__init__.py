@@ -5,6 +5,34 @@ from __future__ import annotations
 
 from ..types import ConnectionConfig, ROARMessage, TransportType
 
+# Import QUIC/HTTP3 transports with graceful fallback
+try:
+    from .quic import (
+        HTTP3Transport,
+        QUICTransport,
+        TRANSPORT_HTTP3,
+        TRANSPORT_QUIC,
+        create_transport,
+        detect_transport_capability,
+    )
+except Exception:  # pragma: no cover — import may fail if dependencies are broken
+    HTTP3Transport = None  # type: ignore[assignment,misc]
+    QUICTransport = None  # type: ignore[assignment,misc]
+    TRANSPORT_HTTP3 = "http3"
+    TRANSPORT_QUIC = "quic"
+    create_transport = None  # type: ignore[assignment]
+    detect_transport_capability = None  # type: ignore[assignment]
+
+__all__ = [
+    "send_message",
+    "HTTP3Transport",
+    "QUICTransport",
+    "TRANSPORT_HTTP3",
+    "TRANSPORT_QUIC",
+    "create_transport",
+    "detect_transport_capability",
+]
+
 
 async def send_message(
     config: ConnectionConfig,
@@ -37,5 +65,15 @@ async def send_message(
     if config.transport == TransportType.STDIO:
         from .stdio import stdio_send
         return await stdio_send(message)
+
+    # Support QUIC/HTTP3 via string comparison (TransportType enum doesn't
+    # include these yet, but ConnectionConfig.transport may be overridden).
+    transport_str = str(config.transport)
+    if transport_str in (TRANSPORT_QUIC, TRANSPORT_HTTP3):
+        if transport_str == TRANSPORT_QUIC:
+            t = QUICTransport()
+        else:
+            t = HTTP3Transport()  # type: ignore[misc]
+        return await t.send_message(config, message, signing_secret)
 
     raise NotImplementedError(f"Transport not supported: {config.transport}")
