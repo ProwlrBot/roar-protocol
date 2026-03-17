@@ -60,8 +60,8 @@ Think TCP/IP, but for AI agents.
 |:----|:-------|:---------|
 | **Python** | Reference implementation — `roar-sdk` on PyPI | [`python/`](python/) |
 | **TypeScript** | Reference implementation — `@roar-protocol/sdk` on npm | [`ts/`](ts/) |
-| **Go** | Core types, signing, client | [`go/`](go/) |
-| **Rust** | Core types, signing (serde) | [`rust/`](rust/) |
+| **Go** | Types, signing, client, server, hub | [`go/`](go/) |
+| **Rust** | Types, signing, server, hub (serde + tiny_http) | [`rust/`](rust/) |
 | **Browser/WASM** | Web Crypto API, browser-native | [`ts/browser/`](ts/browser/) |
 
 See [SDK-ROADMAP.md](SDK-ROADMAP.md) for open tasks, divergence issues, and what needs work.

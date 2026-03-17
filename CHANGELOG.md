@@ -6,6 +6,54 @@ Format: `[version] — date — description`
 
 ---
 
+## [Cross-Terminal Release] — 2026-03-17
+
+Coordinated release across all four engineering terminals.
+
+### Security (Terminal 1)
+
+- **SEC-001**: Atomic token enforcement via Redis Lua script — prevents counter overshoot that permanently blacklists legitimate tokens
+- **SEC-002**: Removed same-party delegation fast path that trusted wire `public_key` — all delegation keys now resolved from trusted sources only (fail closed)
+- **SEC-007**: Sanitized error messages in hub challenge/unregister endpoints — no longer leaks Pydantic schema details or ValueError internals
+- **SEC-010**: Replaced string-prefix IP check with proper `ipaddress.ip_network` CIDR validation — `172.1.x.x` (public) no longer treated as trusted proxy
+- **SEC-013**: Key rotation grace period capped by original key expiry — compromised short-TTL keys can no longer gain extra lifetime via rotation
+- `KeyTrustStore` — Ed25519 key trust enforcement with automated rotation, grace periods, and mandatory expiration (Python + TypeScript parity)
+
+### SDK (Terminal 2)
+
+- **Go SDK**: Server (`go/server.go`) and Hub (`go/hub.go`) with HTTP handlers, replay protection, signature verification, and intent routing
+- **Go SDK**: Fixed Content-Type header ordering in hub registration (set before `WriteHeader`)
+- **Rust SDK**: Server (`rust/src/server.rs`) and Hub (`rust/src/hub.rs`) with `tiny_http`, serde integration, replay protection, and full test suites
+- **TypeScript**: `KeyTrustStore` (`ts/src/key_trust.ts`) mirroring Python implementation with SEC-013 grace period cap
+- **TypeScript**: stdio transport verified functional for local agent communication
+- Plugin API (`plugin.py`), EventBridge (`event_bridge.py`), Identity Migration (`migration.py`)
+
+### Infrastructure (Terminal 3)
+
+- 76 new conformance tests across 5 files: edge cases, replay attacks, invalid signatures, delegation chains, unauthorized access
+- Docker images: `Dockerfile.hub` and `Dockerfile.agent` — non-root, health checks, slim base
+- `docker-compose.observability.yml` — full stack with Prometheus, Grafana, OTel collector, Redis, nginx
+- Kubernetes manifests: namespace, configmap, hub/agent deployments (2 replicas each), Redis StatefulSet with PVC, NetworkPolicies
+- Grafana dashboard: 8 panels (request rate, auth failures, latency P50/95/99, rate limits, error %, Redis health, message throughput, Redis memory)
+- OTel collector config with OTLP receivers and Prometheus exporter
+- Grafana datasource provisioning with explicit `uid: prometheus` for dashboard compatibility
+
+### Developer Experience (Terminal 4)
+
+- `docs/DIAGRAMS.md` — 12+ Mermaid diagrams covering architecture, message flow, signing, intents, discovery, federation, delegation, transport, streaming, DNS discovery, protocol bridge, connection lifecycle, and class diagrams
+- `docs/DNS-DISCOVERY.md` — comprehensive guide for DNS-based agent discovery (DNS-AID/BANDAID, did:web, ANP, well-known) with zone file generation, security considerations, and setup instructions
+- `docs/TUTORIALS.md` — 4 video tutorial scripts: Getting Started (12 min), Running a Hub (15 min), Using the SDKs (18 min), Security Basics (10 min)
+- README: Spec badge updated v0.2.0 → v0.3.0, added DIAGRAMS.md link to spec table
+
+### Cross-Terminal Audit Fixes
+
+- DelegationToken diagram fields corrected (`delegator_did`/`delegate_did` instead of `issuer_did`/`subject_did`)
+- StreamEventType count corrected to 11 (was 8 — added `stream_start`, `stream_end`, `agent_delegate`)
+- Tutorial code examples fixed to match actual SDK API (correct method names, field names, import paths)
+- OTel collector config: replaced deprecated `loglevel` with `verbosity`
+
+---
+
 ## [Python SDK 0.3.2] — 2026-03-16
 
 ### Added

@@ -45,7 +45,7 @@ client_max_body_size 1m;  # For ROARServer upstream
 
 ### 2.2 Rate Limiting
 
-ROAR does not implement built-in rate limiting. Use nginx's `limit_req` module or an API gateway to protect all endpoints.
+ROAR includes built-in Redis-backed rate limiting via `roar_sdk.middleware.rate_limiter.RateLimiterMiddleware`. It supports per-IP dual sliding windows (per-minute and per-hour), configurable via environment variables (`RATE_LIMIT_PER_MINUTE`, `RATE_LIMIT_PER_HOUR`). The middleware degrades gracefully if Redis is unavailable. For defense in depth, also configure rate limiting at the proxy layer.
 
 Example nginx configuration for the registration endpoint (the most abuse-prone):
 

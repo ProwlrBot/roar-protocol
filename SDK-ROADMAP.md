@@ -1,22 +1,22 @@
 # ROAR SDK Roadmap
 
-> Status of Python and TypeScript SDK implementations relative to the spec.
+> Status of all SDK implementations relative to the spec.
 
-Last updated: 2026-03-16 (v0.3.2 — RedisTokenStore, AgentCard attestation, full security hardening)
+Last updated: 2026-03-17 (cross-terminal release — Go/Rust server+hub, security fixes, conformance tests, deployment, docs)
 
 ---
 
 ## Current Status
 
-| Layer | Spec | Python SDK | TypeScript SDK |
-|:------|:----:|:----------:|:--------------:|
-| 1 — Identity | ✅ | ✅ Complete | ✅ Complete |
-| 2 — Discovery | ✅ | ✅ Complete | ✅ Complete |
-| 3 — Connect | ✅ | ✅ Complete | ✅ Complete |
-| 4 — Exchange | ✅ | ✅ Complete | ✅ Complete |
-| 5 — Stream | ✅ | ✅ Complete | ✅ Complete |
+| Layer | Spec | Python SDK | TypeScript SDK | Go SDK | Rust SDK |
+|:------|:----:|:----------:|:--------------:|:------:|:--------:|
+| 1 — Identity | ✅ | ✅ Complete | ✅ Complete | ✅ Types | ✅ Types |
+| 2 — Discovery | ✅ | ✅ Complete | ✅ Complete | ✅ Hub | ✅ Hub |
+| 3 — Connect | ✅ | ✅ Complete | ✅ Complete | ✅ HTTP | ✅ HTTP |
+| 4 — Exchange | ✅ | ✅ Complete | ✅ Complete | ✅ Signing + Server | ✅ Signing + Server |
+| 5 — Stream | ✅ | ✅ Complete | ✅ Complete | — | — |
 
-**Conformance:** Python ✅ 76/76 tests &nbsp;|&nbsp; TypeScript ✅ 30/30 golden fixtures + 10 unit tests
+**Conformance:** Python ✅ 664 tests &nbsp;|&nbsp; TypeScript ✅ 30/30 golden fixtures + 10 unit tests &nbsp;|&nbsp; Go ✅ unit tests &nbsp;|&nbsp; Rust ✅ unit tests
 
 ---
 
@@ -46,7 +46,7 @@ Last updated: 2026-03-16 (v0.3.2 — RedisTokenStore, AgentCard attestation, ful
 | `ROARHub` with REST API | ✅ | `hub.py` |
 | Hub challenge-response registration | ✅ | `hub_auth.py` |
 | Hub federation (push/pull sync) | ✅ | `hub.py` |
-| DNS-based discovery (IETF BANDAID) | ❌ | future |
+| DNS-based discovery (IETF BANDAID) | ✅ | `dns_discovery.py` |
 
 ### Layer 3 — Connect
 
@@ -117,7 +117,7 @@ Last updated: 2026-03-16 (v0.3.2 — RedisTokenStore, AgentCard attestation, ful
 | `ROARHub` with REST API | ✅ | `hub.ts` |
 | Hub challenge-response registration | ✅ | `hub_auth.ts` |
 | Hub federation (sync + export) | ✅ | `hub.ts` |
-| DNS-based discovery (IETF BANDAID) | ❌ | future |
+| DNS-based discovery (IETF BANDAID) | ✅ | `dns_discovery.py` |
 
 ### Layer 3 — Connect
 
