@@ -72,6 +72,8 @@ from .dedup import IdempotencyGuard
 from .autonomy import AutonomyLevel, CapabilityDelegation, RuntimeToken
 from .verifier import StrictMessageVerifier, VerificationResult
 from .auth_middleware import AuthConfig, AuthStrategy, require_auth
+from .tracing import Tracer, Span, inject_trace_context, extract_trace_context
+from .audit import AuditLog, AuditEntry
 
 __all__ = [
     # Layer 1
@@ -141,4 +143,12 @@ __all__ = [
     "AuthConfig",
     "AuthStrategy",
     "require_auth",
+    # Tracing & Observability
+    "Tracer",
+    "Span",
+    "inject_trace_context",
+    "extract_trace_context",
+    # Audit trail
+    "AuditLog",
+    "AuditEntry",
 ]
