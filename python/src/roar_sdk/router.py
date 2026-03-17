@@ -27,7 +27,7 @@ import logging
 import time
 from typing import Any, Dict, Optional, Set
 
-from fastapi import APIRouter, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .types import ROARMessage
@@ -78,6 +78,7 @@ def create_roar_router(
     rate_limit: int = 0,
     auth_token: str = "",
     strict_verifier: Optional[StrictMessageVerifier] = None,
+    auth_config: Optional[Any] = None,
 ) -> APIRouter:
     """Create a FastAPI router wired to a ROARServer.
 
@@ -85,6 +86,8 @@ def create_roar_router(
         server: A ROARServer instance.
         rate_limit: Max requests per minute (0 = disabled). Uses token bucket.
         auth_token: Optional Bearer token for WebSocket/SSE auth.
+        auth_config: Optional AuthConfig for pluggable auth middleware.
+            If provided, all routes except /health are protected.
 
     Returns:
         APIRouter with POST /roar/message, WS /roar/ws, GET /roar/events,
@@ -96,6 +99,13 @@ def create_roar_router(
 
     if not isinstance(server, ROARServer):
         raise TypeError(f"create_roar_router: 'server' must be a ROARServer, got {type(server).__name__}")
+
+    # Build route-level dependencies from auth_config
+    _route_deps: list = []
+    if auth_config is not None:
+        from .auth_middleware import require_auth
+        _route_deps.append(Depends(require_auth(auth_config)))
+
     router = APIRouter(prefix="/roar", tags=["roar"])
 
     _limiter: Optional[TokenBucket] = None
@@ -136,7 +146,7 @@ def create_roar_router(
         if not _hmac.compare_digest(authorization[7:], auth_token):
             raise HTTPException(status_code=401, detail="Invalid authorization token")
 
-    @router.post("/message")
+    @router.post("/message", dependencies=_route_deps)
     async def handle_message(body: Dict[str, Any], request: Request) -> Any:
         """Receive a ROAR message via HTTP POST."""
         limited = _check_rate()
@@ -229,7 +239,7 @@ def create_roar_router(
         except WebSocketDisconnect:
             logger.info("ROAR WebSocket disconnected")
 
-    @router.get("/events")
+    @router.get("/events", dependencies=_route_deps)
     async def event_stream(
         request: Request,
         session_id: str = "",

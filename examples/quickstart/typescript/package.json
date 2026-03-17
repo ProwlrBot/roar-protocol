@@ -1,0 +1,17 @@
+{
+  "name": "roar-quickstart",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "hello": "npx tsx 01_hello_agent.ts",
+    "discover": "npx tsx 02_discover_and_talk.ts",
+    "signing": "npx tsx 03_signed_messages.ts"
+  },
+  "dependencies": {
+    "@roar-protocol/sdk": "^0.3.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,4 +1,4 @@
-# ROAR Protocol Specification v0.2.0
+# ROAR Protocol Specification v0.3.0
 
 **Real-time Open Agent Runtime**
 *Designed by [@kdairatchi](https://github.com/kdairatchi)*

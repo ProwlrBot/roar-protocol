@@ -1,13 +1,13 @@
 {
-  "spec_version": "0.2.0",
+  "spec_version": "0.3.0",
   "status": "active",
-  "date": "2026-03-12",
+  "date": "2026-03-17",
   "layers": {
-    "identity": "0.2.0",
-    "discovery": "0.2.0",
-    "connect": "0.2.0",
-    "exchange": "0.2.0",
-    "stream": "0.2.0"
+    "identity": "0.3.0",
+    "discovery": "0.3.0",
+    "connect": "0.3.0",
+    "exchange": "0.3.0",
+    "stream": "0.3.0"
   },
   "compatibility": {
     "prowlrbot": ">=0.1.0",

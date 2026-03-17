@@ -31,7 +31,7 @@ Quick start::
 
 __version__ = "0.3.2"
 __author__ = "kdairatchi"
-__spec_version__ = "0.2.0"
+__spec_version__ = "0.3.0"
 
 from .types import (
     # Layer 1
@@ -71,6 +71,7 @@ from .discovery_cache import DiscoveryCache
 from .dedup import IdempotencyGuard
 from .autonomy import AutonomyLevel, CapabilityDelegation, RuntimeToken
 from .verifier import StrictMessageVerifier, VerificationResult
+from .auth_middleware import AuthConfig, AuthStrategy, require_auth
 
 __all__ = [
     # Layer 1
@@ -136,4 +137,8 @@ __all__ = [
     # Token stores
     "InMemoryTokenStore",
     "RedisTokenStore",
+    # Auth middleware
+    "AuthConfig",
+    "AuthStrategy",
+    "require_auth",
 ]

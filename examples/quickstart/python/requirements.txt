@@ -1,0 +1,1 @@
+roar-sdk[server,ed25519]
