@@ -74,6 +74,7 @@ from .verifier import StrictMessageVerifier, VerificationResult
 from .auth_middleware import AuthConfig, AuthStrategy, require_auth
 from .tracing import Tracer, Span, inject_trace_context, extract_trace_context
 from .audit import AuditLog, AuditEntry
+from .workflow import TaskStatus, WorkflowTask, Workflow, WorkflowEngine, CyclicDependencyError
 
 __all__ = [
     # Layer 1
@@ -151,4 +152,10 @@ __all__ = [
     # Audit trail
     "AuditLog",
     "AuditEntry",
+    # Workflow orchestration
+    "TaskStatus",
+    "WorkflowTask",
+    "Workflow",
+    "WorkflowEngine",
+    "CyclicDependencyError",
 ]

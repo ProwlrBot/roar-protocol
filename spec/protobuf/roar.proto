@@ -1,0 +1,355 @@
+// ROAR Protocol — gRPC Protobuf Schema
+// Version: 0.3.0
+// Status: STUB — defines the wire schema for Phase 3 gRPC transport.
+//         No gRPC code is generated from this file yet.
+//
+// This schema mirrors the JSON wire format defined in ROAR-SPEC.md and
+// the JSON schemas in spec/schemas/. When gRPC transport is implemented
+// (Phase 3, targeting v0.5.0), this file will be used to generate
+// server and client stubs for Python and TypeScript.
+//
+// Design notes:
+// - Fields that are JSON objects in the wire format (payload, context, auth)
+//   are represented as JSON strings here. This preserves schema flexibility
+//   and avoids encoding application-specific payload structures in protobuf.
+// - Timestamps are double (float64) to match the JSON wire format's Unix
+//   epoch float representation.
+// - Agent types and intents are enums for type safety in generated code.
+
+syntax = "proto3";
+
+package roar.v1;
+
+option go_package = "github.com/kdairatchi/roar-protocol/gen/go/roar/v1";
+option java_package = "com.roarprotocol.v1";
+option java_multiple_files = true;
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+// AgentType classifies the kind of entity an agent represents.
+// Maps to the agent_type field in AgentIdentity.
+enum AgentType {
+  // Default/unspecified — receivers should treat as AGENT.
+  AGENT_TYPE_UNSPECIFIED = 0;
+
+  // A software agent that performs tasks autonomously.
+  AGENT_TYPE_AGENT = 1;
+
+  // A tool server that executes commands on behalf of agents.
+  AGENT_TYPE_TOOL = 2;
+
+  // A human operator interacting through an interface.
+  AGENT_TYPE_HUMAN = 3;
+
+  // An IDE or development environment integration.
+  AGENT_TYPE_IDE = 4;
+}
+
+// MessageIntent defines the purpose of a ROARMessage.
+// These seven intents cover all interaction patterns in the protocol.
+enum MessageIntent {
+  // Default/unspecified — receivers should reject messages with this intent.
+  MESSAGE_INTENT_UNSPECIFIED = 0;
+
+  // Agent invoking a tool or command. Maps to MCP tool calls.
+  MESSAGE_INTENT_EXECUTE = 1;
+
+  // Agent handing off a task to another agent. Maps to A2A task delegation.
+  MESSAGE_INTENT_DELEGATE = 2;
+
+  // Agent reporting progress to an IDE or human observer.
+  MESSAGE_INTENT_UPDATE = 3;
+
+  // Agent requesting input, approval, or clarification from a human.
+  MESSAGE_INTENT_ASK = 4;
+
+  // Reply to any previously received message.
+  MESSAGE_INTENT_RESPOND = 5;
+
+  // One-way notification. No reply expected.
+  MESSAGE_INTENT_NOTIFY = 6;
+
+  // Query a discovery directory for agents matching capabilities.
+  MESSAGE_INTENT_DISCOVER = 7;
+}
+
+// StreamEventType classifies real-time events on the event bus.
+enum StreamEventType {
+  // Default/unspecified.
+  STREAM_EVENT_TYPE_UNSPECIFIED = 0;
+
+  // An agent is calling a tool.
+  STREAM_EVENT_TYPE_TOOL_CALL = 1;
+
+  // An incoming MCP request is being processed.
+  STREAM_EVENT_TYPE_MCP_REQUEST = 2;
+
+  // An agent is sharing its reasoning process in real time.
+  STREAM_EVENT_TYPE_REASONING = 3;
+
+  // A task status has changed on the mission board.
+  STREAM_EVENT_TYPE_TASK_UPDATE = 4;
+
+  // A web or API monitor has detected a change.
+  STREAM_EVENT_TYPE_MONITOR_ALERT = 5;
+
+  // An agent's availability status has changed (idle/busy/offline).
+  STREAM_EVENT_TYPE_AGENT_STATUS = 6;
+
+  // A checkpoint for crash recovery.
+  STREAM_EVENT_TYPE_CHECKPOINT = 7;
+
+  // A virtual world state change (AgentVerse).
+  STREAM_EVENT_TYPE_WORLD_UPDATE = 8;
+}
+
+// ============================================================================
+// Messages
+// ============================================================================
+
+// AgentIdentity represents a ROAR agent's core identity.
+// Every agent in the system has an AgentIdentity containing its DID,
+// human-readable name, capabilities, and optional cryptographic key.
+message AgentIdentity {
+  // W3C Decentralized Identifier, e.g. "did:roar:agent:planner-a1b2c3d4".
+  // This is the globally unique identifier for the agent.
+  // Supports did:roar:, did:key:, and did:web: methods.
+  string did = 1;
+
+  // Human-readable name for the agent, e.g. "code-reviewer".
+  // Used for display purposes. Not guaranteed to be unique.
+  string display_name = 2;
+
+  // List of capabilities this agent declares, e.g. ["python", "code-review"].
+  // Used by discovery directories for capability-based search.
+  repeated string capabilities = 3;
+
+  // Ed25519 public key as a hex string (64 characters, 32 bytes).
+  // Optional. When present, enables Ed25519 signature verification
+  // without requiring a shared secret.
+  string public_key = 4;
+
+  // The type of entity this agent represents.
+  AgentType agent_type = 5;
+
+  // Protocol version this agent conforms to, e.g. "1.0".
+  string version = 6;
+}
+
+// ROARMessage is the single unified message format for all ROAR communication.
+// All seven intent types use this same structure. The intent field determines
+// how the payload should be interpreted.
+message ROARMessage {
+  // Unique message identifier, e.g. "msg_a1b2c3d4e5".
+  // Used for replay detection (messages with duplicate IDs within the
+  // 600-second deduplication window are rejected).
+  string id = 1;
+
+  // Identity of the message sender.
+  // The sender's DID and public key are used for signature verification.
+  AgentIdentity from = 2;
+
+  // Identity of the intended message receiver.
+  // The StrictMessageVerifier checks that this matches the receiving agent's DID.
+  AgentIdentity to = 3;
+
+  // The intent of this message — determines how payload is interpreted.
+  // See MessageIntent enum for the seven possible values.
+  MessageIntent intent = 4;
+
+  // Intent-specific content as a JSON string.
+  // Structure varies by intent:
+  //   execute:  {"tool": "...", "params": {...}}
+  //   delegate: {"task": "...", "priority": "..."}
+  //   update:   {"status": "...", "progress": 0.5}
+  //   ask:      {"question": "...", "options": [...]}
+  //   respond:  {"result": ..., "status": "ok"}
+  //   notify:   {"event": "...", "details": {...}}
+  //   discover: {"capability": "...", "limit": 10}
+  string payload_json = 5;
+
+  // Session and trace metadata as a JSON string.
+  // Common fields: session_id, trace_id, in_reply_to, protocol, delegation_token.
+  string context_json = 6;
+
+  // Unix epoch timestamp (float64) when the message was created.
+  // Used alongside auth timestamp for replay protection.
+  double timestamp = 7;
+
+  // Authentication and signing data as a JSON string.
+  // Contains:
+  //   signature: "hmac-sha256:<hex>" or "ed25519:<base64url>"
+  //   timestamp: float (set before signing, included in signing body)
+  //   public_key: hex string (for ed25519 only)
+  // The signing body covers: id, from DID, to DID, intent, payload,
+  // context, and auth.timestamp — serialized as canonical JSON with
+  // sorted keys.
+  string auth_json = 8;
+}
+
+// StreamEvent represents a real-time event on the ROAR event bus.
+// Delivered via SSE (/roar/events) or WebSocket (/roar/ws) with
+// AIMD backpressure control.
+message StreamEvent {
+  // The type of event. Determines how data_json should be interpreted.
+  StreamEventType type = 1;
+
+  // DID of the agent or system that generated this event.
+  string source = 2;
+
+  // Session identifier grouping related events.
+  string session_id = 3;
+
+  // Event-specific data as a JSON string.
+  // Structure varies by event type. Examples:
+  //   tool_call:     {"tool": "read_file", "args": {"path": "main.py"}}
+  //   task_update:   {"task_id": "...", "status": "completed"}
+  //   agent_status:  {"status": "busy", "current_task": "..."}
+  //   reasoning:     {"step": 3, "thought": "Analyzing dependencies..."}
+  string data_json = 4;
+
+  // Unix epoch timestamp (float64) when the event was generated.
+  double timestamp = 5;
+
+  // Distributed tracing identifier for correlating events across agents.
+  // Optional. When present, allows reconstructing the full chain of
+  // interactions that led to this event.
+  string trace_id = 6;
+}
+
+// AgentCard is an agent's "business card" — published to discovery directories
+// so other agents can find and evaluate it. Extends AgentIdentity with
+// descriptive and structural metadata.
+message AgentCard {
+  // The agent's core identity (DID, name, capabilities, key).
+  AgentIdentity identity = 1;
+
+  // Human-readable description of what this agent does.
+  // Used by discovery UIs and agent selection heuristics.
+  string description = 2;
+
+  // List of specific skills the agent offers, e.g. ["code-review", "refactoring"].
+  // More granular than capabilities — used for precise capability matching.
+  repeated string skills = 3;
+
+  // Communication channels the agent supports, e.g. ["http", "websocket"].
+  repeated string channels = 4;
+
+  // Endpoint URLs where the agent can be reached.
+  // Keys are transport types, values are URLs:
+  //   {"http": "https://agent.example.com/roar/message",
+  //    "ws": "wss://agent.example.com/roar/ws"}
+  map<string, string> endpoints = 5;
+
+  // Formal capability declarations with constraints and autonomy levels.
+  // Each entry specifies a capability name, description, and the autonomy
+  // level required to invoke it (WATCH, GUIDE, DELEGATE, AUTONOMOUS).
+  // Encoded as a JSON array string for schema flexibility.
+  string declared_capabilities_json = 6;
+
+  // Ed25519 attestation signature over the card's content fields.
+  // Proves the card was published by the agent that owns the DID.
+  // Verify with the public key in identity.public_key.
+  string attestation = 7;
+}
+
+// ============================================================================
+// Request/Response Messages
+// ============================================================================
+
+// Request to send a message to an agent.
+message SendMessageRequest {
+  ROARMessage message = 1;
+}
+
+// Response after sending a message. Contains the reply (if synchronous).
+message SendMessageResponse {
+  // The response message from the receiving agent.
+  // May be empty for notify intent (fire-and-forget).
+  ROARMessage reply = 1;
+}
+
+// Request to subscribe to the event stream.
+message StreamEventsRequest {
+  // Optional: filter events by session ID.
+  string session_id = 1;
+
+  // Optional: filter events by type.
+  repeated StreamEventType event_types = 2;
+
+  // Optional: filter events by source agent DID.
+  string source_did = 3;
+}
+
+// Request to register an agent in the discovery directory.
+message RegisterAgentRequest {
+  AgentCard card = 1;
+}
+
+// Response after registering an agent.
+message RegisterAgentResponse {
+  // Whether registration was successful.
+  bool success = 1;
+
+  // The DID assigned to (or confirmed for) the registered agent.
+  string did = 2;
+
+  // Human-readable status message.
+  string message = 3;
+}
+
+// Request to discover agents by capability.
+message DiscoverAgentsRequest {
+  // Capability to search for, e.g. "code-review".
+  string capability = 1;
+
+  // Maximum number of results to return.
+  int32 limit = 2;
+
+  // Optional: restrict to a specific agent type.
+  AgentType agent_type = 3;
+}
+
+// Response containing discovered agents.
+message DiscoverAgentsResponse {
+  // Agent cards matching the discovery query.
+  repeated AgentCard agents = 1;
+}
+
+// ============================================================================
+// Service Definition
+// ============================================================================
+
+// ROARService is the gRPC service interface for ROAR Protocol communication.
+// This service mirrors the HTTP endpoints defined in the specification:
+//   POST /roar/message       -> SendMessage
+//   GET  /roar/events        -> StreamEvents (server-streaming)
+//   POST /roar/agents/register -> RegisterAgent
+//   GET  /roar/agents        -> DiscoverAgents
+service ROARService {
+  // Send a ROARMessage to an agent and receive a synchronous response.
+  // Maps to POST /roar/message in the HTTP transport.
+  // The server verifies the message signature, checks replay protection,
+  // dispatches to the appropriate intent handler, and returns the response.
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // Subscribe to the real-time event stream.
+  // Maps to GET /roar/events (SSE) in the HTTP transport.
+  // Returns a server-side stream of StreamEvents filtered by the request
+  // parameters. AIMD backpressure is applied to prevent consumer overload.
+  rpc StreamEvents(StreamEventsRequest) returns (stream StreamEvent);
+
+  // Register an agent in the discovery directory.
+  // Maps to POST /roar/agents/register in the HTTP transport.
+  // The agent's card is validated, the attestation signature is verified
+  // (if present), and the agent is added to the directory.
+  rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
+
+  // Discover agents by capability.
+  // Maps to GET /roar/agents in the HTTP transport.
+  // Searches the local directory and (if federation is enabled)
+  // federated peer directories for agents matching the query.
+  rpc DiscoverAgents(DiscoverAgentsRequest) returns (DiscoverAgentsResponse);
+}
