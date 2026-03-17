@@ -8,20 +8,42 @@ build/
 python/dist/
 ts/dist/
 
-# Claude internal files
+# Claude Code / AI agent session artifacts
 .claude/
-
-# Auto Claude data directory
 .auto-claude/
-
-# Auto Claude generated files
 .auto-claude-security.json
 .auto-claude-status
 .claude_settings.json
-.worktrees/
-.security-key
-logs/security/
 .agents/
 skills-lock.json
+
+# Superpowers AI plans and session specs (not production docs)
+docs/superpowers/plans/
+docs/superpowers/specs/
+
+# Worktrees and temp environments
+.worktrees/
 .test-venv/
 .demo-venv/
+
+# Security keys (never commit)
+.security-key
+logs/security/
+
+# Secrets and environment (never commit)
+.env
+.env.local
+*.pem
+*.p12
+*.key
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
