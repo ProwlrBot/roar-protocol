@@ -266,7 +266,7 @@ class QUICTransport:
                 stream_id = h3.send_headers(
                     headers=[
                         (b":method", b"POST"),
-                        (b":path", f"/roar/message".encode()),
+                        (b":path", "/roar/message".encode()),
                         (b":authority", host.encode()),
                         (b":scheme", b"https"),
                     ]

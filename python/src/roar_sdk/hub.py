@@ -324,6 +324,7 @@ class ROARHub:
             Requires Authorization header with federation secret.
             """
             import hmac as _hmac
+            import os as _os
             fed_secret = _os.getenv("ROAR_FEDERATION_SECRET", "")
             if fed_secret:
                 auth_header = request.headers.get("authorization", "")

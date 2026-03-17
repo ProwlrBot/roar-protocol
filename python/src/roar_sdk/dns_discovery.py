@@ -56,7 +56,6 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from .did_document import DIDDocument, ServiceEndpoint
 from .did_web import DIDWebMethod
 from .types import AgentCard
 from .well_known import ROARWellKnown, fetch_well_known

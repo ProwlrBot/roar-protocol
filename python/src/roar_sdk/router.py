@@ -31,7 +31,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, WebSocke
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from .types import ROARMessage
-from .verifier import StrictMessageVerifier, VerificationResult
+from .verifier import StrictMessageVerifier
 
 logger = logging.getLogger(__name__)
 

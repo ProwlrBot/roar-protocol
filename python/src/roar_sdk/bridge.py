@@ -53,13 +53,13 @@ except ImportError:
     _ACP_AVAILABLE = False
 
 try:
-    from .adapters import mcp as _mcp_module
+    from .adapters import mcp as _mcp_module  # noqa: F401
     _MCP_ADAPTER_AVAILABLE = True
 except (ImportError, AttributeError):
     _MCP_ADAPTER_AVAILABLE = False
 
 try:
-    from .adapters import a2a as _a2a_module
+    from .adapters import a2a as _a2a_module  # noqa: F401
     _A2A_ADAPTER_AVAILABLE = True
 except (ImportError, AttributeError):
     _A2A_ADAPTER_AVAILABLE = False

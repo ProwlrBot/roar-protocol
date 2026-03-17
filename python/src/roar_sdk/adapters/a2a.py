@@ -44,9 +44,9 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, cast
 
-from ..types import AgentCard, AgentCapability, AgentIdentity, MessageIntent, ROARMessage
+from ..types import AgentCard, AgentIdentity, MessageIntent, ROARMessage
 
 
 class A2AAdapter:

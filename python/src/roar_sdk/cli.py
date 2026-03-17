@@ -134,7 +134,7 @@ def _register(args: argparse.Namespace) -> None:
             })
             result = r.json()
             if result.get("registered"):
-                print(f"Registered successfully!")
+                print("Registered successfully!")
                 print(f"  DID: {identity.did}")
                 print(f"  Name: {args.name}")
                 print(f"  Private key (save this!): {priv_key}")
@@ -152,7 +152,7 @@ def _send(args: argparse.Namespace) -> None:
     receiver = AgentIdentity(did=args.did, display_name="target")
 
     msg = ROARMessage(
-        **{"from": sender, "to": receiver},
+        **{"from": sender, "to": receiver},  # type: ignore[arg-type]
         intent=MessageIntent.DELEGATE,
         payload=json.loads(args.payload) if args.payload.startswith("{") else {"task": args.payload},
     )

@@ -24,11 +24,8 @@ Usage::
 from __future__ import annotations
 
 import inspect
-import json
 import logging
-import time
-import uuid
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .tracing import Span, SpanContext, Tracer, extract_trace_context, inject_trace_context
 from .types import ROARMessage

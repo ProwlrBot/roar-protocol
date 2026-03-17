@@ -73,7 +73,7 @@ async def send_message(
         if transport_str == TRANSPORT_QUIC:
             t = QUICTransport()
         else:
-            t = HTTP3Transport()  # type: ignore[misc]
+            t = HTTP3Transport()  # type: ignore[assignment]
         return await t.send_message(config, message, signing_secret)
 
     raise NotImplementedError(f"Transport not supported: {config.transport}")
