@@ -191,8 +191,8 @@ func (h *ROARHub) Handler() http.Handler {
 			}
 
 			h.Register(card)
-			w.WriteHeader(http.StatusCreated)
 			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(map[string]any{"status": "registered", "did": card.Identity.DID})
 
 		default:

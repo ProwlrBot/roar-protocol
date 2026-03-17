@@ -222,7 +222,8 @@ class ROARHub:
                     content={"error": "signature_verification_unavailable"},
                 )
             except ValueError as exc:
-                return JSONResponse(status_code=401, content={"error": f"invalid_signature: {exc}"})
+                logger.warning("Signature verification ValueError: %s", exc)
+                return JSONResponse(status_code=401, content={"error": "invalid_signature"})
 
             if not valid:
                 return JSONResponse(status_code=401, content={"error": "invalid_signature"})
@@ -290,7 +291,8 @@ class ROARHub:
                     content={"error": "signature_verification_unavailable"},
                 )
             except ValueError as exc:
-                return JSONResponse(status_code=401, content={"error": f"invalid_signature: {exc}"})
+                logger.warning("Signature verification ValueError: %s", exc)
+                return JSONResponse(status_code=401, content={"error": "invalid_signature"})
 
             if not valid:
                 return JSONResponse(status_code=401, content={"error": "invalid_signature"})

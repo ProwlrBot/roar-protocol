@@ -130,7 +130,9 @@ export class KeyTrustStore {
       if (!isExpired(key) && !isRotated(key)) {
         key.rotatedAt = now;
         key.replacedBy = newPublicKeyHex;
-        key.expiresAt = now + this.rotationGrace * 3600;
+        // Grace period must not extend beyond original expiry (SEC-013 parity)
+        const graceExpiry = now + this.rotationGrace * 3600;
+        key.expiresAt = key.expiresAt !== null ? Math.min(key.expiresAt, graceExpiry) : graceExpiry;
         break;
       }
     }

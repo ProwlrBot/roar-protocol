@@ -248,6 +248,9 @@ class StreamEventType(StrEnum):
     AGENT_STATUS = "agent_status"
     CHECKPOINT = "checkpoint"
     WORLD_UPDATE = "world_update"  # AgentVerse
+    STREAM_START = "stream_start"
+    STREAM_END = "stream_end"
+    AGENT_DELEGATE = "agent_delegate"
 
 
 class StreamEvent(BaseModel):

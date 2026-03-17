@@ -1,0 +1,123 @@
+# ROAR Protocol — Full Observability Stack
+# Usage: docker compose -f deployment/docker-compose.observability.yml up -d
+#
+# Access:
+#   App:        http://localhost:8000
+#   Grafana:    http://localhost:3000 (admin / $GRAFANA_ADMIN_PASSWORD)
+#   Prometheus: http://127.0.0.1:9090 (internal only)
+#
+# REQUIRED env vars:
+#   GRAFANA_ADMIN_PASSWORD — Grafana admin password (no default for security)
+#
+# Optional env vars:
+#   ROAR_ALLOWED_ORIGINS, ROAR_RATE_LIMIT_PER_MINUTE, GUNICORN_WORKERS
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      - ROAR_REDIS_URL=redis://redis:6379/0
+      - ROAR_ENV=production
+      - ROAR_LOG_LEVEL=INFO
+      - ROAR_ALLOWED_ORIGINS=${ROAR_ALLOWED_ORIGINS:-}
+      - ROAR_RATE_LIMIT_PER_MINUTE=${ROAR_RATE_LIMIT_PER_MINUTE:-100}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - roar-internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - roar-internal
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerting.yml:/etc/prometheus/alerting.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - roar-internal
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD env var}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - roar-internal
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.96.0
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    # Internal only — no host port bindings
+    networks:
+      - roar-internal
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    depends_on:
+      - redis
+    networks:
+      - roar-internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/roar.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - roar-internal
+
+volumes:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  roar-internal:
+    driver: bridge

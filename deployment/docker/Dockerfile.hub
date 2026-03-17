@@ -1,0 +1,32 @@
+# ROAR Protocol — Production Hub Image
+# Build: docker build -f deployment/docker/Dockerfile.hub -t roar-hub .
+# Run:   docker run -p 8090:8090 roar-hub
+FROM python:3.13-slim AS base
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY python/pyproject.toml python/README.md ./python/
+COPY python/src/ ./python/src/
+RUN pip install --no-cache-dir ./python[server,monitoring,redis,ed25519]
+
+COPY spec/ ./spec/
+
+# Non-root user
+RUN useradd --create-home --shell /bin/bash roar
+USER roar
+
+ENV ROAR_MODE=hub
+ENV ROAR_HOST=0.0.0.0
+ENV ROAR_PORT=8090
+ENV ROAR_LOG_LEVEL=INFO
+
+EXPOSE 8090
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8090/roar/health || exit 1
+
+CMD ["python", "-m", "roar_sdk.cli", "hub", "--host", "0.0.0.0", "--port", "8090"]

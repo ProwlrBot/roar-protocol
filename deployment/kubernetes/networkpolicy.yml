@@ -1,0 +1,83 @@
+# NetworkPolicy — restrict traffic between ROAR components
+# Hub: accepts from agents and ingress
+# Agents: accept from hub
+# Redis: accepts only from hub and agent pods
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: roar-hub-policy
+  namespace: roar-protocol
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: roar-hub
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: roar-agent
+      ports:
+        - protocol: TCP
+          port: 8090
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8090
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: roar-agent-policy
+  namespace: roar-protocol
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: roar-agent
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: roar-hub
+      ports:
+        - protocol: TCP
+          port: 8089
+    - from:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8089
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-policy
+  namespace: roar-protocol
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: hub
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/component: agent
+      ports:
+        - protocol: TCP
+          port: 6379

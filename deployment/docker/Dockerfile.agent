@@ -1,0 +1,34 @@
+# ROAR Protocol — Production Agent Image
+# Build: docker build -f deployment/docker/Dockerfile.agent -t roar-agent .
+# Run:   docker run -p 8089:8089 -e ROAR_AGENT_NAME=my-agent roar-agent
+FROM python:3.13-slim AS base
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY python/pyproject.toml python/README.md ./python/
+COPY python/src/ ./python/src/
+RUN pip install --no-cache-dir ./python[server,monitoring,redis,ed25519]
+
+COPY spec/ ./spec/
+
+# Non-root user
+RUN useradd --create-home --shell /bin/bash roar
+USER roar
+
+ENV ROAR_MODE=agent
+ENV ROAR_HOST=0.0.0.0
+ENV ROAR_PORT=8089
+ENV ROAR_AGENT_NAME=roar-agent
+ENV ROAR_AGENT_CAPS=""
+ENV ROAR_LOG_LEVEL=INFO
+
+EXPOSE 8089
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8089/roar/health || exit 1
+
+CMD ["python", "-m", "roar_sdk.cli", "agent", "--host", "0.0.0.0", "--port", "8089"]

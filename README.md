@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/ProwlrBot/prowlrbot"><img src="https://img.shields.io/badge/reference%20impl-prowlrbot-00E5FF?style=flat-square" /></a>
   <a href="https://github.com/ProwlrBot/roar-protocol/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
-  <img src="https://img.shields.io/badge/spec-v0.2.0-orange?style=flat-square" />
+  <img src="https://img.shields.io/badge/spec-v0.3.0-orange?style=flat-square" />
   <img src="https://img.shields.io/badge/status-active-green?style=flat-square" />
 </p>
 
@@ -248,6 +248,7 @@ All communication uses one of seven intents. No more custom action types.
 | [spec/05-stream.md](spec/05-stream.md) | Layer 5: StreamEvents, backpressure, SSE |
 | [spec/schemas/](spec/schemas/) | JSON Schemas — canonical contracts for all SDKs |
 | [spec/VERSION.json](spec/VERSION.json) | Current spec + SDK compatibility versions |
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | Mermaid diagrams — architecture, message flow, delegation, discovery |
 
 ---
 
