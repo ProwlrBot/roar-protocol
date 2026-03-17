@@ -78,6 +78,14 @@ from .audit import AuditLog, AuditEntry
 from .workflow import TaskStatus, WorkflowTask, Workflow, WorkflowEngine, CyclicDependencyError
 from .plugin import ROARPlugin, PluginManager
 from .migration import IdentityMigrator, MigrationProof
+from .verifiable_credentials import VerifiableCredential, issue_credential, verify_credential
+from .transaction import (
+    Transaction,
+    sign_transaction,
+    verify_transaction,
+    create_purchase_authorization,
+    commit_transaction,
+)
 
 __all__ = [
     # Layer 1
@@ -169,4 +177,14 @@ __all__ = [
     # Identity migration toolkit
     "IdentityMigrator",
     "MigrationProof",
+    # Verifiable Credentials (W3C VC capability attestation)
+    "VerifiableCredential",
+    "issue_credential",
+    "verify_credential",
+    # Agentic Commerce Transaction Signing
+    "Transaction",
+    "sign_transaction",
+    "verify_transaction",
+    "create_purchase_authorization",
+    "commit_transaction",
 ]

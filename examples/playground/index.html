@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROAR Protocol Playground</title>
+<style>
+  :root { --bg: #0d1117; --surface: #161b22; --border: #30363d; --text: #c9d1d9; --accent: #00e5ff; --green: #3fb950; --red: #f85149; --purple: #bc8cff; --mono: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .header { padding: 1rem 2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+  .header h1 { font-size: 1.2rem; color: var(--accent); }
+  .header span { font-size: 0.85rem; opacity: 0.6; }
+  .container { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); height: calc(100vh - 56px); }
+  .panel { background: var(--surface); padding: 1rem; overflow-y: auto; }
+  .panel h2 { font-size: 0.9rem; color: var(--accent); margin-bottom: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 0.8rem; font-family: var(--mono); font-size: 0.85rem; resize: vertical; min-height: 120px; }
+  button { background: var(--accent); color: var(--bg); border: none; padding: 0.5rem 1.2rem; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; margin: 0.5rem 0.5rem 0.5rem 0; }
+  button:hover { opacity: 0.9; }
+  button.secondary { background: var(--border); color: var(--text); }
+  .output { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.8rem; font-family: var(--mono); font-size: 0.8rem; white-space: pre-wrap; min-height: 200px; max-height: 400px; overflow-y: auto; }
+  .log-entry { padding: 0.2rem 0; border-bottom: 1px solid #1c2129; }
+  .log-entry .ts { color: #484f58; }
+  .log-entry .ok { color: var(--green); }
+  .log-entry .err { color: var(--red); }
+  .log-entry .info { color: var(--accent); }
+  .field { margin-bottom: 0.8rem; }
+  .field label { display: block; font-size: 0.8rem; color: #8b949e; margin-bottom: 0.3rem; }
+  .field input, .field select { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-size: 0.85rem; }
+  .agents-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+  .agent-card { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem; }
+  .agent-card .name { color: var(--accent); font-weight: 600; }
+  .agent-card .did { font-family: var(--mono); font-size: 0.75rem; opacity: 0.6; }
+  .agent-card .caps { font-size: 0.8rem; color: var(--purple); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>ROAR Playground</h1>
+  <span>Interactive sandbox — experiment with agent identity, messages, and signing</span>
+</div>
+
+<div class="container">
+  <div class="panel">
+    <h2>Agent Builder</h2>
+    <div class="field">
+      <label>Display Name</label>
+      <input type="text" id="agentName" value="my-agent" />
+    </div>
+    <div class="field">
+      <label>Agent Type</label>
+      <select id="agentType">
+        <option value="agent">agent</option>
+        <option value="tool">tool</option>
+        <option value="human">human</option>
+        <option value="ide">ide</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Capabilities (comma-separated)</label>
+      <input type="text" id="agentCaps" value="code-review, python" />
+    </div>
+    <button onclick="createAgent()">Create Agent</button>
+
+    <h2 style="margin-top:1.5rem">Registered Agents</h2>
+    <div id="agentsList" class="agents-list">
+      <div style="opacity:0.5;font-size:0.85rem">No agents yet. Create one above.</div>
+    </div>
+
+    <h2 style="margin-top:1.5rem">Send Message</h2>
+    <div class="field">
+      <label>From (select agent)</label>
+      <select id="msgFrom"></select>
+    </div>
+    <div class="field">
+      <label>To (select agent)</label>
+      <select id="msgTo"></select>
+    </div>
+    <div class="field">
+      <label>Intent</label>
+      <select id="msgIntent">
+        <option value="execute">execute</option>
+        <option value="delegate" selected>delegate</option>
+        <option value="update">update</option>
+        <option value="ask">ask</option>
+        <option value="respond">respond</option>
+        <option value="notify">notify</option>
+        <option value="discover">discover</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Payload (JSON)</label>
+      <textarea id="msgPayload">{"task": "review", "file": "main.py"}</textarea>
+    </div>
+    <div class="field">
+      <label>Signing Secret</label>
+      <input type="text" id="msgSecret" value="" placeholder="Leave empty for unsigned" />
+    </div>
+    <button onclick="sendMessage()">Build &amp; Sign</button>
+    <button class="secondary" onclick="verifyLast()">Verify Last</button>
+  </div>
+
+  <div class="panel">
+    <h2>Output</h2>
+    <div id="output" class="output"></div>
+  </div>
+</div>
+
+<script>
+const agents = [];
+let lastMessage = null;
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+function ts() { return new Date().toISOString().slice(11, 23); }
+
+function log(msg, cls = 'info') {
+  const el = document.getElementById('output');
+  el.innerHTML += `<div class="log-entry"><span class="ts">[${ts()}]</span> <span class="${cls}">${escapeHtml(msg)}</span></div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function generateDID(type, name) {
+  return `did:roar:${type}:${name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${uid()}`;
+}
+
+function createAgent() {
+  const name = document.getElementById('agentName').value.trim();
+  const type = document.getElementById('agentType').value;
+  const caps = document.getElementById('agentCaps').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!name) { log('Agent name is required', 'err'); return; }
+  const did = generateDID(type, name);
+  const agent = { did, display_name: name, agent_type: type, capabilities: caps, version: '1.0' };
+  agents.push(agent);
+  log(`Created agent: ${name} (${did})`);
+  renderAgents();
+}
+
+function renderAgents() {
+  const el = document.getElementById('agentsList');
+  if (!agents.length) { el.innerHTML = '<div style="opacity:0.5;font-size:0.85rem">No agents yet.</div>'; return; }
+  el.innerHTML = agents.map(a => `<div class="agent-card"><div class="name">${escapeHtml(a.display_name)}</div><div class="did">${escapeHtml(a.did)}</div><div class="caps">${a.capabilities.join(', ')}</div></div>`).join('');
+  // Update dropdowns
+  const opts = agents.map(a => `<option value="${a.did}">${escapeHtml(a.display_name)}</option>`).join('');
+  document.getElementById('msgFrom').innerHTML = opts;
+  document.getElementById('msgTo').innerHTML = opts;
+  if (agents.length > 1) document.getElementById('msgTo').selectedIndex = 1;
+}
+
+async function hmacSign(secret, body) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(body));
+  return 'hmac-sha256:' + Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function hmacVerify(secret, body, signature) {
+  const expected = await hmacSign(secret, body);
+  return expected === signature;
+}
+
+function canonicalBody(msg) {
+  const obj = { context: msg.context, from: msg.from.did, id: msg.id, intent: msg.intent, payload: msg.payload, timestamp: msg.auth.timestamp, to: msg.to.did };
+  return JSON.stringify(obj, Object.keys(obj).sort());
+}
+
+async function sendMessage() {
+  const fromDid = document.getElementById('msgFrom').value;
+  const toDid = document.getElementById('msgTo').value;
+  if (!fromDid || !toDid) { log('Create at least 2 agents first', 'err'); return; }
+  const fromAgent = agents.find(a => a.did === fromDid);
+  const toAgent = agents.find(a => a.did === toDid);
+  const intent = document.getElementById('msgIntent').value;
+  let payload;
+  try { payload = JSON.parse(document.getElementById('msgPayload').value); }
+  catch { log('Invalid JSON payload', 'err'); return; }
+  const secret = document.getElementById('msgSecret').value;
+  const now = Date.now() / 1000;
+  const msg = { roar: '1.0', id: 'msg_' + uid(), from: fromAgent, to: toAgent, intent, payload, context: {}, auth: { timestamp: now }, timestamp: now };
+  if (secret) {
+    const body = canonicalBody(msg);
+    msg.auth.signature = await hmacSign(secret, body);
+    log(`Signed: ${msg.auth.signature.slice(0, 50)}...`);
+  } else {
+    log('Message built (unsigned)', 'info');
+  }
+  lastMessage = { msg, secret };
+  log('Message:\n' + JSON.stringify(msg, null, 2));
+}
+
+async function verifyLast() {
+  if (!lastMessage) { log('No message to verify', 'err'); return; }
+  const { msg, secret } = lastMessage;
+  if (!msg.auth.signature) { log('Message was not signed', 'err'); return; }
+  if (!secret) { log('No secret available for verification', 'err'); return; }
+  const body = canonicalBody(msg);
+  const valid = await hmacVerify(secret, body, msg.auth.signature);
+  if (valid) { log('Signature VALID', 'ok'); }
+  else { log('Signature INVALID', 'err'); }
+}
+
+// Pre-populate with two demo agents
+window.addEventListener('load', () => {
+  document.getElementById('agentName').value = 'alice';
+  document.getElementById('agentCaps').value = 'code-review, python';
+  createAgent();
+  document.getElementById('agentName').value = 'bob';
+  document.getElementById('agentCaps').value = 'testing, review';
+  createAgent();
+  document.getElementById('agentName').value = '';
+  log('Playground ready. Two demo agents created.');
+  log('Try: select agents, set a secret, and click "Build & Sign"');
+});
+</script>
+</body>
+</html>
