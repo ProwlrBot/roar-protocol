@@ -98,7 +98,10 @@
       <input type="text" id="msgSecret" value="" placeholder="Leave empty for unsigned" />
     </div>
     <button onclick="sendMessage()">Build &amp; Sign</button>
-    <button class="secondary" onclick="verifyLast()">Verify Last</button>
+    <button class="secondary" onclick="verifyLast()">Verify</button>
+    <button class="secondary" onclick="searchAgents()">Search</button>
+    <button class="secondary" onclick="showHistory()">History</button>
+    <button class="secondary" onclick="tamperDemo()">Tamper Demo</button>
   </div>
 
   <div class="panel">
@@ -201,6 +204,51 @@ async function verifyLast() {
   else { log('Signature INVALID', 'err'); }
 }
 
+// --- Discovery simulation ---
+function searchAgents() {
+  const cap = prompt('Search capability:');
+  if (!cap) return;
+  const matches = agents.filter(a => a.capabilities.includes(cap));
+  log(`Discovery: searching for "${cap}"...`);
+  if (matches.length === 0) { log(`No agents found with "${cap}"`, 'err'); return; }
+  log(`Found ${matches.length} agent(s):`);
+  matches.forEach(a => log(`  ${a.display_name} (${a.did})`));
+}
+
+// --- Message history ---
+const messageHistory = [];
+const _origSend = sendMessage;
+sendMessage = async function() {
+  await _origSend();
+  if (lastMessage) {
+    messageHistory.push({...lastMessage.msg, _ts: Date.now()});
+    log(`History: ${messageHistory.length} message(s) total`);
+  }
+}
+
+function showHistory() {
+  if (!messageHistory.length) { log('No messages sent yet', 'info'); return; }
+  log(`--- Message History (${messageHistory.length}) ---`);
+  messageHistory.forEach((m, i) => {
+    log(`${i+1}. ${m.intent} from ${m.from.display_name} to ${m.to.display_name} [${m.id}]`);
+  });
+}
+
+// --- Tamper demo ---
+async function tamperDemo() {
+  if (!lastMessage) { log('Send a signed message first', 'err'); return; }
+  const { msg, secret } = lastMessage;
+  if (!msg.auth.signature) { log('Message is unsigned', 'err'); return; }
+  log('Tampering with payload...');
+  const original = JSON.stringify(msg.payload);
+  msg.payload._tampered = true;
+  const body = canonicalBody(msg);
+  const valid = await hmacVerify(secret, body, msg.auth.signature);
+  log(`After tampering: signature ${valid ? 'VALID (BAD!)' : 'INVALID (tamper detected!)'}`, valid ? 'err' : 'ok');
+  msg.payload = JSON.parse(original);
+  delete msg.payload._tampered;
+}
+
 // Pre-populate with two demo agents
 window.addEventListener('load', () => {
   document.getElementById('agentName').value = 'alice';
@@ -210,8 +258,9 @@ window.addEventListener('load', () => {
   document.getElementById('agentCaps').value = 'testing, review';
   createAgent();
   document.getElementById('agentName').value = '';
-  log('Playground ready. Two demo agents created.');
-  log('Try: select agents, set a secret, and click "Build & Sign"');
+  log('ROAR Playground ready.');
+  log('Two demo agents created. Try sending a signed message.');
+  log('Commands: Build & Sign, Verify, Search, History, Tamper Demo');
 });
 </script>
 </body>

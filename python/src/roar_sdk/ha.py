@@ -204,3 +204,88 @@ class HubCluster:
                 logger.warning("Send failed on %s, trying next hub: %s", hub.url, exc)
 
         raise ConnectionError(f"All hubs failed. Last error: {last_error}")
+
+    # ------------------------------------------------------------------
+    # Split-brain detection
+    # ------------------------------------------------------------------
+
+    async def detect_split_brain(self) -> Dict[str, List[str]]:
+        """Detect agent registration inconsistencies across hubs.
+
+        Compares the agent list from each hub and reports DIDs that
+        exist on some hubs but not others. A non-empty result indicates
+        a potential split-brain or federation lag.
+
+        Returns:
+            Dict mapping hub URLs to lists of DIDs unique to that hub.
+        """
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required: pip install httpx")
+
+        hub_agents: Dict[str, set] = {}
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            for hub in self.healthy_hubs:
+                try:
+                    resp = await client.get(f"{hub.url}/roar/agents")
+                    if resp.status_code == 200:
+                        dids = set()
+                        for agent in resp.json().get("agents", []):
+                            did = agent.get("agent_card", {}).get("identity", {}).get("did", "")
+                            if did:
+                                dids.add(did)
+                        hub_agents[hub.url] = dids
+                except Exception as exc:
+                    logger.warning("Split-brain check failed on %s: %s", hub.url, exc)
+
+        if len(hub_agents) < 2:
+            return {}
+
+        # Find DIDs that aren't on all hubs
+        all_dids = set()
+        for dids in hub_agents.values():
+            all_dids |= dids
+
+        inconsistencies: Dict[str, List[str]] = {}
+        for url, dids in hub_agents.items():
+            unique = all_dids - dids
+            if unique:
+                inconsistencies[url] = sorted(unique)
+
+        if inconsistencies:
+            logger.warning("Split-brain detected: %d hub(s) have inconsistent registrations", len(inconsistencies))
+        return inconsistencies
+
+    async def heal_split_brain(self) -> int:
+        """Trigger federation sync across all healthy hubs to resolve inconsistencies.
+
+        Returns the number of sync operations performed.
+        """
+        try:
+            import httpx
+        except ImportError:
+            raise ImportError("httpx required: pip install httpx")
+
+        healthy = self.healthy_hubs
+        synced = 0
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            for i, hub_a in enumerate(healthy):
+                for hub_b in healthy[i + 1:]:
+                    try:
+                        await client.post(
+                            f"{hub_a.url}/roar/federation/sync",
+                            json={"hub_url": hub_b.url},
+                        )
+                        synced += 1
+                    except Exception as exc:
+                        logger.warning("Federation sync %s -> %s failed: %s", hub_a.url, hub_b.url, exc)
+                    try:
+                        await client.post(
+                            f"{hub_b.url}/roar/federation/sync",
+                            json={"hub_url": hub_a.url},
+                        )
+                        synced += 1
+                    except Exception as exc:
+                        logger.warning("Federation sync %s -> %s failed: %s", hub_b.url, hub_a.url, exc)
+        return synced

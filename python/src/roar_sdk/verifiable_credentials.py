@@ -235,3 +235,113 @@ def extract_capabilities(credential: VerifiableCredential) -> List[str]:
         List of capability strings, or empty list if none present.
     """
     return list(credential.credential_subject.capabilities)
+
+
+# ---------------------------------------------------------------------------
+# Credential Revocation Registry
+# ---------------------------------------------------------------------------
+
+
+class RevocationRegistry:
+    """In-memory credential revocation list.
+
+    Issuers can revoke credentials by ID. Verifiers check the registry
+    before trusting a credential.
+
+    For production, back this with Redis or a database.
+    """
+
+    def __init__(self) -> None:
+        self._revoked: Dict[str, str] = {}  # vc_id -> reason
+
+    def revoke(self, credential_id: str, reason: str = "revoked") -> None:
+        """Revoke a credential by its ID."""
+        self._revoked[credential_id] = reason
+
+    def is_revoked(self, credential_id: str) -> bool:
+        """Check if a credential has been revoked."""
+        return credential_id in self._revoked
+
+    def get_reason(self, credential_id: str) -> str:
+        """Get the revocation reason, or empty string if not revoked."""
+        return self._revoked.get(credential_id, "")
+
+    def revoked_count(self) -> int:
+        return len(self._revoked)
+
+
+def verify_credential_with_revocation(
+    credential: VerifiableCredential,
+    public_key_hex: str,
+    registry: RevocationRegistry,
+) -> bool:
+    """Verify a credential's signature, expiration, AND revocation status.
+
+    Args:
+        credential: The VC to verify.
+        public_key_hex: Issuer's public key.
+        registry: Revocation registry to check against.
+
+    Returns:
+        True only if signature is valid, not expired, and not revoked.
+    """
+    if registry.is_revoked(credential.id):
+        return False
+    return verify_credential(credential, public_key_hex)
+
+
+# ---------------------------------------------------------------------------
+# Issuer Trust Chain
+# ---------------------------------------------------------------------------
+
+
+class IssuerTrustChain:
+    """Registry of trusted credential issuers.
+
+    Maps issuer DIDs to their public keys. Only credentials from
+    trusted issuers pass full verification.
+    """
+
+    def __init__(self) -> None:
+        self._trusted: Dict[str, str] = {}  # issuer_did -> public_key_hex
+
+    def trust_issuer(self, issuer_did: str, public_key_hex: str) -> None:
+        """Add an issuer to the trust chain."""
+        self._trusted[issuer_did] = public_key_hex
+
+    def untrust_issuer(self, issuer_did: str) -> None:
+        """Remove an issuer from the trust chain."""
+        self._trusted.pop(issuer_did, None)
+
+    def is_trusted(self, issuer_did: str) -> bool:
+        return issuer_did in self._trusted
+
+    def get_public_key(self, issuer_did: str) -> str:
+        """Get the public key for a trusted issuer, or empty string."""
+        return self._trusted.get(issuer_did, "")
+
+    def verify_from_chain(
+        self,
+        credential: VerifiableCredential,
+        revocation: RevocationRegistry | None = None,
+    ) -> bool:
+        """Verify a credential using only the trust chain for key resolution.
+
+        This is the recommended verification path — keys come from the
+        trust chain, never from the credential itself.
+
+        Args:
+            credential: The VC to verify.
+            revocation: Optional revocation registry.
+
+        Returns:
+            True if the issuer is trusted, the signature is valid,
+            the credential is not expired, and (if registry provided)
+            not revoked.
+        """
+        pub = self.get_public_key(credential.issuer)
+        if not pub:
+            return False
+        if revocation and revocation.is_revoked(credential.id):
+            return False
+        return verify_credential(credential, pub)
