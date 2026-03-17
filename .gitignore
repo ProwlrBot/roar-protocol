@@ -21,3 +21,7 @@ ts/dist/
 .worktrees/
 .security-key
 logs/security/
+.agents/
+skills-lock.json
+.test-venv/
+.demo-venv/
