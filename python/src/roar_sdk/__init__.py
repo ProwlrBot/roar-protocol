@@ -76,6 +76,8 @@ from .auth_middleware import AuthConfig, AuthStrategy, require_auth
 from .tracing import Tracer, Span, inject_trace_context, extract_trace_context
 from .audit import AuditLog, AuditEntry
 from .workflow import TaskStatus, WorkflowTask, Workflow, WorkflowEngine, CyclicDependencyError
+from .plugin import ROARPlugin, PluginManager
+from .migration import IdentityMigrator, MigrationProof
 
 __all__ = [
     # Layer 1
@@ -161,4 +163,10 @@ __all__ = [
     "Workflow",
     "WorkflowEngine",
     "CyclicDependencyError",
+    # Plugin & Extension API
+    "ROARPlugin",
+    "PluginManager",
+    # Identity migration toolkit
+    "IdentityMigrator",
+    "MigrationProof",
 ]

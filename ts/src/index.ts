@@ -114,6 +114,10 @@ export type { DiscoveryCacheStats } from "./discovery_cache.js";
 export { StrictMessageVerifier } from "./verifier.js";
 export type { VerificationResult, StrictMessageVerifierOptions } from "./verifier.js";
 
+// Key trust enforcement (Layer 1 — production key management)
+export { KeyTrustStore } from "./key_trust.js";
+export type { KeyMetadata, KeyTrustResult, KeyTrustStoreOptions } from "./key_trust.js";
+
 // Hub / Federation (Layer 2)
 export { ROARHub } from "./hub.js";
 export type { ROARHubOptions } from "./hub.js";
