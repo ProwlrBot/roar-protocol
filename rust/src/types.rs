@@ -59,7 +59,7 @@ impl Default for AgentIdentity {
 // ---------------------------------------------------------------------------
 
 /// What the sender wants the receiver to do.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MessageIntent {
     Execute,
