@@ -49,6 +49,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ts/package-lock.json
+      - name: Build TypeScript SDK (for cross-SDK tests)
+        run: npm ci && npm run build
+        working-directory: ts
       - run: pip install -e ".[dev,redis]"
         working-directory: python
       - name: lint — ruff
@@ -58,6 +66,9 @@ jobs:
         run: mypy src/roar_sdk/ --ignore-missing-imports
         working-directory: python
       - run: pytest tests/conformance/ -v
+        working-directory: .
+      - name: cross-SDK interop tests
+        run: pytest tests/test_cross_sdk_interop.py -v
         working-directory: .
       - run: python tests/check_versions.py
         working-directory: .
