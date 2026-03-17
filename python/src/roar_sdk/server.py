@@ -299,6 +299,9 @@ class ROARServer:
             )
 
         app = FastAPI(title=f"ROAR Agent: {self._identity.display_name}")
+        # Expose Request in module globals so FastAPI can resolve the type
+        # annotation despite `from __future__ import annotations`.
+        globals()["Request"] = Request
         server_ref = self
 
         # Prometheus metrics (optional — requires monitoring extra)
