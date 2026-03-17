@@ -58,8 +58,11 @@ Think TCP/IP, but for AI agents.
 
 | SDK | Status | Location |
 |:----|:-------|:---------|
-| **Python** | Reference implementation — `roar-sdk` on PyPI | [`python/`](python/) in this repo |
-| **TypeScript** | Reference implementation — `@roar-protocol/sdk` on npm | [`ts/`](ts/) in this repo |
+| **Python** | Reference implementation — `roar-sdk` on PyPI | [`python/`](python/) |
+| **TypeScript** | Reference implementation — `@roar-protocol/sdk` on npm | [`ts/`](ts/) |
+| **Go** | Core types, signing, client | [`go/`](go/) |
+| **Rust** | Core types, signing (serde) | [`rust/`](rust/) |
+| **Browser/WASM** | Web Crypto API, browser-native | [`ts/browser/`](ts/browser/) |
 
 See [SDK-ROADMAP.md](SDK-ROADMAP.md) for open tasks, divergence issues, and what needs work.
 
@@ -264,13 +267,34 @@ See [tests/README.md](tests/README.md) for how to run conformance tests against 
 
 ---
 
+## Quick Start — Docker
+
+```bash
+docker compose up        # Hub + 2 demo agents
+```
+
+Hub at `http://localhost:8090`, Agent A at `:8091`, Agent B at `:8092`.
+
+## Quick Start — CLI
+
+```bash
+pip install -e './python[cli]'
+roar hub start                       # Start a hub
+roar hub agents                      # List registered agents
+roar hub search code-review          # Find agents by capability
+roar send http://localhost:8091 did:roar:agent:test '{"task":"review"}'
+```
+
 ## Examples
 
 | Example | What it shows |
 |:--------|:-------------|
+| [examples/demo/](examples/demo/) | **3-terminal demo** — Hub + Agent A + Agent B with Ed25519 registration and discovery |
 | [examples/python/echo_server.py](examples/python/echo_server.py) | Minimal ROARServer echoing DELEGATE messages |
 | [examples/python/client.py](examples/python/client.py) | ROARClient discovering the server and sending a message |
-| [examples/python/README.md](examples/python/README.md) | How to run both standalone or against a remote ROAR server |
+| [examples/python/demo_hub_two_agents.py](examples/python/demo_hub_two_agents.py) | Single-script visual demo of the full protocol |
+| [examples/quickstart/](examples/quickstart/) | Step-by-step quickstart guides (Python + TypeScript) |
+| [examples/demo/cross_framework.py](examples/demo/cross_framework.py) | Cross-framework bridging (AutoGen, CrewAI, LangGraph) |
 
 ---
 

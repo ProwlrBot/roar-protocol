@@ -1,112 +1,157 @@
 # ROAR Protocol — Installation
 
-The canonical Python SDK lives in this repo under `python/`. No external dependencies beyond Pydantic.
+**Author:** [@kdairatchi](https://github.com/kdairatchi)
+
+Pick your path — Docker for the fastest start, or install from source for development.
 
 ---
 
-## Option A — Install from this repo (standalone)
+## Fastest Start — Docker
 
 ```bash
 git clone https://github.com/ProwlrBot/roar-protocol.git
 cd roar-protocol
-pip install -e ./python                  # types + client + server (pydantic only)
-pip install -e './python[http]'          # + httpx for HTTP transport
-pip install -e './python[server]'        # + fastapi + uvicorn to serve agents
+docker compose up
 ```
 
-### Verify install
+Hub at `http://localhost:8090`, two demo agents at `:8091` and `:8092`. Done.
+
+---
+
+## Python SDK — Install from Source
 
 ```bash
-python3 -c "
+git clone https://github.com/ProwlrBot/roar-protocol.git
+cd roar-protocol
+
+# Basic install (types + client + server)
+pip install -e ./python
+
+# With all bells and whistles
+pip install -e './python[server,redis,cli,ed25519,monitoring]'
+```
+
+### Verify
+
+```bash
+python -c "
 from roar_sdk import AgentIdentity, ROARMessage, MessageIntent
 agent = AgentIdentity(display_name='test-agent', capabilities=['code'])
 print('DID:', agent.did)
-print('ROAR SDK', __import__('roar_sdk').__version__, 'installed successfully')
+print('ROAR SDK installed successfully')
 "
 ```
 
-Expected output:
-```
-DID: did:roar:agent:test-agent-xxxxxxxxxxxxxxxx
-ROAR SDK 0.2.0 installed successfully
-```
-
-### Run conformance tests
+### Use the CLI
 
 ```bash
-python3 tests/validate_golden.py
+pip install -e './python[cli]'
+roar hub start              # Start a discovery hub
+roar hub health             # Check hub status
+roar hub agents             # List registered agents
+roar hub search code-review # Find agents by capability
 ```
 
-Expected output:
-```
-identity.json   ✅
-message.json    ✅
-stream-event.json ✅
-signature.json  ✅
-
-All 30 conformance checks passed. ✅
-```
-
-### Run the examples
+### Run the Demo
 
 ```bash
-# Terminal 1 — start the echo server
-pip install -e './python[server]'
-python3 examples/python/echo_server.py
+# Terminal 1
+python examples/demo/hub.py
 
-# Terminal 2 — send it a message
-pip install -e './python[http]'
-python3 examples/python/client.py
+# Terminal 2
+python examples/demo/agent_a.py
+
+# Terminal 3
+python examples/demo/agent_b.py
+```
+
+### Run Tests
+
+```bash
+pip install -e './python[dev]'
+python -m pytest tests/ -q
 ```
 
 ---
 
-## Option B — Install via ProwlrBot (full platform)
-
-ProwlrBot includes the ROAR SDK plus the full platform (FastAPI app, channels, memory, CLI):
+## TypeScript SDK
 
 ```bash
-git clone https://github.com/ProwlrBot/prowlrbot.git
-cd prowlrbot
-pip install -e ".[dev]"
-prowlr app   # starts on port 8088, ROAR endpoints at /roar/*
-```
-
-The ROAR types from the ProwlrBot repo are compatible with `roar-sdk` from this repo — same canonical types, same signing scheme.
-
----
-
-## Package Structure
-
-```
-python/
-├── pyproject.toml           # pip installable: pip install -e ./python
-├── README.md
-└── src/
-    └── roar_sdk/
-        ├── __init__.py      # Public API: from roar_sdk import *
-        ├── types.py         # Canonical types — AgentIdentity, ROARMessage, StreamEvent, etc.
-        ├── client.py        # ROARClient — send messages, discover agents
-        ├── server.py        # ROARServer — receive and dispatch messages
-        ├── streaming.py     # EventBus, StreamFilter, Subscription
-        └── transports/
-            ├── __init__.py  # Transport dispatcher
-            └── http.py      # HTTP transport (httpx)
+cd ts
+npm ci
+npm run build
+npm test
 ```
 
 ---
 
-## Requirements
+## Go SDK
 
-- Python 3.10+
-- `pydantic>=2.0` (auto-installed with `pip install -e ./python`)
-- `httpx>=0.25` for HTTP transport (optional extra: `[http]`)
-- `fastapi>=0.104`, `uvicorn>=0.24` for serving (optional extra: `[server]`)
+```bash
+cd go
+go build ./...
+go test ./...
+```
+
+---
+
+## Rust SDK
+
+```bash
+cd rust
+cargo build
+cargo test
+```
+
+---
+
+## Browser/WASM SDK
+
+For browser-based agent clients using the Web Crypto API:
+
+```bash
+cd ts/browser
+npm install
+```
+
+Import directly in your browser app — uses `SubtleCrypto` for Ed25519.
+
+---
+
+## Production Deployment
+
+See [docs/deployment/PRODUCTION_DEPLOYMENT.md](docs/deployment/PRODUCTION_DEPLOYMENT.md) for the full guide, or:
+
+```bash
+docker compose -f deployment/docker-compose.prod.yml up -d
+```
+
+This gives you the app + Redis + nginx with TLS.
+
+---
+
+## All Available Extras (Python)
+
+```bash
+pip install -e './python[server]'        # FastAPI + uvicorn + gunicorn
+pip install -e './python[http]'          # httpx for HTTP transport
+pip install -e './python[websocket]'     # websockets
+pip install -e './python[redis]'         # Redis token store
+pip install -e './python[ed25519]'       # Ed25519 signing (cryptography)
+pip install -e './python[monitoring]'    # Prometheus metrics
+pip install -e './python[cli]'           # CLI toolkit
+pip install -e './python[dev]'           # Testing + linting tools
+```
 
 ---
 
 ## Links
 
-- [ROAR Protocol Specification](https://github.com/ProwlrBot/roar-protocol) — this repo
-- [ProwlrBot Platform](https://github.com/ProwlrBot/prowlrbot) — reference implementation
-- [SDK-ROADMAP.md](SDK-ROADMAP.md) — open tasks and Python/TS divergence tracker
+- [BUILD.md](BUILD.md) — Full build guide for all SDKs
+- [ROAR-SPEC.md](ROAR-SPEC.md) — Protocol specification
+- [SDK-ROADMAP.md](SDK-ROADMAP.md) — Feature status tracker
+- [ProwlrBot](https://github.com/ProwlrBot/prowlrbot) — Reference platform implementation
+
+---
+
+*Built by [@kdairatchi](https://github.com/kdairatchi). The protocol should be invisible.*
