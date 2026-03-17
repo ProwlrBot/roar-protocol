@@ -1,0 +1,16 @@
+.git
+.github
+.auto-claude
+.agents
+.worktrees
+.test-venv
+.demo-venv
+__pycache__
+*.pyc
+node_modules
+ts/dist
+ts/node_modules
+research
+assets
+.pytest_cache
+*.egg-info

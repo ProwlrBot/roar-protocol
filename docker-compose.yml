@@ -1,0 +1,61 @@
+# ROAR Protocol — One-Command Deployment
+#
+# Start everything: docker compose up
+# Hub + 2 agents + Redis (optional)
+#
+# Access:
+#   Hub:     http://localhost:8090/roar/health
+#   Agent A: http://localhost:8091/roar/health
+#   Agent B: http://localhost:8092/roar/health
+
+services:
+  hub:
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      ROAR_MODE: hub
+      ROAR_HOST: "0.0.0.0"
+      ROAR_PORT: "8090"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8090/roar/health').raise_for_status()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  agent-a:
+    build: .
+    ports:
+      - "8091:8089"
+    environment:
+      ROAR_MODE: agent
+      ROAR_HOST: "0.0.0.0"
+      ROAR_PORT: "8089"
+      ROAR_AGENT_NAME: "agent-a-coder"
+      ROAR_AGENT_CAPS: "code-review,python,debugging"
+      ROAR_SECRET: "${ROAR_SECRET:-roar-demo-secret}"
+    depends_on:
+      hub:
+        condition: service_healthy
+
+  agent-b:
+    build: .
+    ports:
+      - "8092:8089"
+    environment:
+      ROAR_MODE: agent
+      ROAR_HOST: "0.0.0.0"
+      ROAR_PORT: "8089"
+      ROAR_AGENT_NAME: "agent-b-tester"
+      ROAR_AGENT_CAPS: "testing,qa"
+      ROAR_SECRET: "${ROAR_SECRET:-roar-demo-secret}"
+    depends_on:
+      hub:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles:
+      - with-redis
