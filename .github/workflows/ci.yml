@@ -65,7 +65,8 @@ jobs:
       - name: typecheck — mypy
         run: mypy src/roar_sdk/ --ignore-missing-imports
         working-directory: python
-      - run: pytest tests/conformance/ -v
+      - name: conformance tests
+        run: pytest tests/test_conformance*.py -v
         working-directory: .
       - name: cross-SDK interop tests
         run: pytest tests/test_cross_sdk_interop.py -v
