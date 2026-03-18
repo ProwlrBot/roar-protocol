@@ -219,8 +219,8 @@ class ROARMessage(BaseModel):
         Returns:
             True if signature is valid and message is within the time window.
         """
-        sig_value = self.auth.get("signature", "")
-        if not sig_value.startswith("hmac-sha256:"):
+        sig_value = self.auth.get("signature") or ""
+        if not isinstance(sig_value, str) or not sig_value.startswith("hmac-sha256:"):
             return False
 
         if max_age_seconds > 0:

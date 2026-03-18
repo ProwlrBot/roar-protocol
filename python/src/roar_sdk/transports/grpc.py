@@ -15,9 +15,9 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Callable, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
-from ..types import AgentCard, AgentIdentity, ConnectionConfig, ROARMessage, StreamEvent
+from ..types import AgentIdentity, ConnectionConfig, ROARMessage, StreamEvent
 
 logger = logging.getLogger(__name__)
 
@@ -273,7 +273,6 @@ class GRPCServicer:
 
     def Health(self, request_bytes: bytes, context: Any) -> bytes:
         """Handle a Health RPC."""
-        identity = getattr(self._server, "Identity", getattr(self._server, "_identity", None))
         return json.dumps({
             "status": "ok",
             "protocol": "roar/1.0",
@@ -293,7 +292,7 @@ class GRPCServicer:
         )
 
         # Register generic handlers
-        from grpc import GenericRpcHandler, RpcMethodHandler
+        from grpc import GenericRpcHandler  # noqa: F401
 
         handlers = {
             "/roar.v1.ROARService/SendMessage": grpc.unary_unary_rpc_method_handler(

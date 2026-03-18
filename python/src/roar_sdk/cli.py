@@ -233,14 +233,14 @@ if __name__ == "__main__":
         with open(os.path.join(name, "requirements.txt"), "w") as f:
             f.write("roar-sdk[server]\n")
         print(f"Created '{name}/' with:")
-        print(f"  agent.py         — ROAR agent server")
-        print(f"  .env             — environment config (set your signing secret)")
-        print(f"  requirements.txt — dependencies")
-        print(f"\nNext steps:")
+        print("  agent.py         — ROAR agent server")
+        print("  .env             — environment config (set your signing secret)")
+        print("  requirements.txt — dependencies")
+        print("\nNext steps:")
         print(f"  cd {name}")
-        print(f"  roar keygen --type hmac  # generate a signing secret")
-        print(f"  pip install -r requirements.txt")
-        print(f"  python agent.py")
+        print("  roar keygen --type hmac  # generate a signing secret")
+        print("  pip install -r requirements.txt")
+        print("  python agent.py")
     else:
         with open(os.path.join(name, "agent.ts"), "w") as f:
             f.write(f'''import {{ AgentIdentity, ROARMessage, MessageIntent }} from "@roar-protocol/sdk";
@@ -258,7 +258,7 @@ console.log("Agent DID:", identity.did);
         with open(os.path.join(name, "package.json"), "w") as f:
             f.write(json.dumps({"name": name, "dependencies": {"@roar-protocol/sdk": "^0.3.0"}}, indent=2))
         print(f"Created '{name}/' with agent.ts and package.json")
-        print(f"\nNext steps:")
+        print("\nNext steps:")
         print(f"  cd {name} && npm install && npx ts-node agent.ts")
 
 
