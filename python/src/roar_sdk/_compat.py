@@ -1,11 +1,10 @@
-# Python 3.10 compatibility shim for StrEnum (added in 3.11)
-try:
-    from enum import StrEnum
-except ImportError:
-    from enum import Enum
+"""Compatibility helpers for Python version differences."""
 
-    class StrEnum(str, Enum):  # type: ignore[no-redef]
-        """Backport of Python 3.11 StrEnum for Python 3.10."""
+from enum import Enum
 
-        def __str__(self) -> str:
-            return self.value
+
+class StrEnum(str, Enum):
+    """Lightweight StrEnum backport for consistent typing on Python 3.10+."""
+
+    def __str__(self) -> str:
+        return self.value
