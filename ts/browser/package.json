@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "build": "esbuild src/index.ts --bundle --format=esm --outfile=dist/index.js --platform=browser",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "serve-examples": "npx serve examples -p 3030"
   },
   "keywords": [
     "roar",

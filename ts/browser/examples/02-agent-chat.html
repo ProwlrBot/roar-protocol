@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROAR — Agent Chat Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 2rem; }
+    h1 { color: #58a6ff; margin-bottom: 0.5rem; font-size: 1.4rem; }
+    p.sub { color: #8b949e; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .chat-container { display: flex; gap: 1rem; margin-bottom: 1rem; }
+    .agent-panel { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; }
+    .agent-panel h2 { font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .agent-panel.alice h2 { color: #7ee787; }
+    .agent-panel.bob h2 { color: #d2a8ff; }
+    .timeline { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1rem; max-height: 500px; overflow-y: auto; }
+    .msg { padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 6px; font-size: 0.8rem; }
+    .msg.from-alice { background: #0d2818; border-left: 3px solid #7ee787; }
+    .msg.from-bob { background: #1c0d2e; border-left: 3px solid #d2a8ff; }
+    .msg .meta { color: #8b949e; font-size: 0.7rem; margin-top: 0.25rem; }
+    .msg .sig { color: #484f58; font-size: 0.65rem; word-break: break-all; }
+    button { background: #238636; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; margin: 0.25rem; }
+    button:hover { background: #2ea043; }
+    .did { color: #8b949e; font-size: 0.75rem; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <h1>ROAR Protocol — Agent Chat</h1>
+  <p class="sub">Two agents exchanging signed messages using the ask/respond pattern.</p>
+
+  <div class="chat-container">
+    <div class="agent-panel alice">
+      <h2>Alice (Questioner)</h2>
+      <div class="did" id="alice-did"></div>
+    </div>
+    <div class="agent-panel bob">
+      <h2>Bob (Responder)</h2>
+      <div class="did" id="bob-did"></div>
+    </div>
+  </div>
+
+  <button id="send-btn">Send Exchange</button>
+  <button id="clear-btn" style="background: #30363d;">Clear</button>
+
+  <div class="timeline" id="timeline" style="margin-top: 1rem;">
+    <div style="color: #8b949e; text-align: center; padding: 2rem;">Click "Send Exchange" to start a conversation</div>
+  </div>
+
+  <script type="module">
+    function uid(n) { return Array.from(crypto.getRandomValues(new Uint8Array(n))).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+    function identity(name) {
+      return { did: `did:roar:agent:${name.toLowerCase()}-${uid(8)}`, display_name: name, agent_type: 'agent', capabilities: [], version: '1.0', public_key: null };
+    }
+    function msg(from, to, intent, payload) {
+      return { roar: '1.0', id: `msg_${uid(5)}`, from, to, intent, payload, context: {}, auth: {}, timestamp: Date.now()/1000 };
+    }
+    async function sign(m, secret) {
+      const enc = new TextEncoder();
+      const key = await crypto.subtle.importKey('raw', enc.encode(secret), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+      const body = JSON.stringify({context:m.context,from:m.from.did,id:m.id,intent:m.intent,payload:m.payload,timestamp:m.timestamp,to:m.to.did});
+      const sig = await crypto.subtle.sign('HMAC', key, enc.encode(body));
+      m.auth = { signature: `hmac-sha256:${Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('')}`, timestamp: m.timestamp };
+    }
+
+    const alice = identity('Alice');
+    const bob = identity('Bob');
+    const secret = 'chat-demo-secret';
+    document.getElementById('alice-did').textContent = alice.did;
+    document.getElementById('bob-did').textContent = bob.did;
+
+    const questions = [
+      'What capabilities do you have?', 'Can you process ROAR messages?',
+      'What protocol version do you support?', 'Are you available for delegation?',
+      'What is your agent type?', 'Can you handle streaming events?'
+    ];
+    const responses = [
+      'I support execute, ask, and respond intents.', 'Yes, ROAR v1.0 messages are fully supported.',
+      'I run ROAR Protocol v0.3.2 with all 5 layers.', 'Yes, I accept delegate intents with proper tokens.',
+      'I am an autonomous agent with signing capabilities.', 'Yes, I can publish and subscribe to StreamEvents.'
+    ];
+    let round = 0;
+
+    const timeline = document.getElementById('timeline');
+
+    function addMsg(m, cls) {
+      const div = document.createElement('div');
+      div.className = `msg ${cls}`;
+      div.innerHTML = `
+        <strong>${m.from.display_name} → ${m.to.display_name}</strong> [${m.intent}]<br>
+        ${JSON.stringify(m.payload)}
+        <div class="meta">${m.id} • ${new Date(m.timestamp*1000).toLocaleTimeString()}</div>
+        <div class="sig">${m.auth.signature || 'unsigned'}</div>
+      `;
+      timeline.appendChild(div);
+      timeline.scrollTop = timeline.scrollHeight;
+    }
+
+    document.getElementById('send-btn').addEventListener('click', async () => {
+      if (round === 0) timeline.innerHTML = '';
+      const q = questions[round % questions.length];
+      const a = responses[round % responses.length];
+
+      const askMsg = msg(alice, bob, 'ask', { question: q });
+      await sign(askMsg, secret);
+      addMsg(askMsg, 'from-alice');
+
+      await new Promise(r => setTimeout(r, 300));
+
+      const respMsg = msg(bob, alice, 'respond', { answer: a });
+      await sign(respMsg, secret);
+      addMsg(respMsg, 'from-bob');
+      round++;
+    });
+
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      timeline.innerHTML = '<div style="color: #8b949e; text-align: center; padding: 2rem;">Cleared</div>';
+      round = 0;
+    });
+  </script>
+</body>
+</html>

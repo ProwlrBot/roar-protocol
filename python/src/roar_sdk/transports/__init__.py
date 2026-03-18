@@ -23,6 +23,18 @@ except Exception:  # pragma: no cover — import may fail if dependencies are br
     create_transport = None  # type: ignore[assignment]
     detect_transport_capability = None  # type: ignore[assignment]
 
+# Import gRPC transport with graceful fallback
+try:
+    from .grpc import (
+        GRPCTransport,
+        GRPCServicer,
+        TRANSPORT_GRPC,
+    )
+except Exception:  # pragma: no cover
+    GRPCTransport = None  # type: ignore[assignment,misc]
+    GRPCServicer = None  # type: ignore[assignment,misc]
+    TRANSPORT_GRPC = "grpc"
+
 __all__ = [
     "send_message",
     "HTTP3Transport",
@@ -31,6 +43,9 @@ __all__ = [
     "TRANSPORT_QUIC",
     "create_transport",
     "detect_transport_capability",
+    "GRPCTransport",
+    "GRPCServicer",
+    "TRANSPORT_GRPC",
 ]
 
 
@@ -75,5 +90,10 @@ async def send_message(
         else:
             t = HTTP3Transport()  # type: ignore[assignment]
         return await t.send_message(config, message, signing_secret)
+
+    if transport_str == TRANSPORT_GRPC:
+        target = config.url.replace("http://", "").replace("https://", "")
+        gt = GRPCTransport(target=target, secure=config.url.startswith("https"))
+        return await gt.send_message(config, message, signing_secret)
 
     raise NotImplementedError(f"Transport not supported: {config.transport}")

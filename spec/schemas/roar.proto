@@ -1,0 +1,124 @@
+// ROAR Protocol gRPC Service Definition
+// Spec: Layer 3 (Connect) — gRPC transport option
+syntax = "proto3";
+
+package roar.v1;
+
+option go_package = "github.com/ProwlrBot/roar-protocol/go/proto";
+
+// ---------------------------------------------------------------------------
+// Core service
+// ---------------------------------------------------------------------------
+
+service ROARService {
+    // Send a ROAR message and receive a response.
+    rpc SendMessage(ROARMessageProto) returns (ROARMessageProto);
+
+    // Subscribe to a stream of events (server-side streaming).
+    rpc StreamEvents(StreamRequest) returns (stream StreamEventProto);
+
+    // Register an agent with the hub.
+    rpc Register(AgentCardProto) returns (RegisterResponse);
+
+    // Look up an agent by DID.
+    rpc Lookup(LookupRequest) returns (AgentCardProto);
+
+    // Search agents by capability.
+    rpc Search(SearchRequest) returns (SearchResponse);
+
+    // Health check.
+    rpc Health(HealthRequest) returns (HealthResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Layer 1: Identity
+// ---------------------------------------------------------------------------
+
+message AgentIdentityProto {
+    string did = 1;
+    string display_name = 2;
+    string agent_type = 3;
+    repeated string capabilities = 4;
+    string version = 5;
+    string public_key = 6;
+}
+
+// ---------------------------------------------------------------------------
+// Layer 2: Discovery
+// ---------------------------------------------------------------------------
+
+message AgentCardProto {
+    AgentIdentityProto identity = 1;
+    string description = 2;
+    repeated string skills = 3;
+    repeated string channels = 4;
+    map<string, string> endpoints = 5;
+}
+
+message LookupRequest {
+    string did = 1;
+}
+
+message SearchRequest {
+    string capability = 1;
+}
+
+message SearchResponse {
+    repeated AgentCardProto agents = 1;
+}
+
+message RegisterResponse {
+    bool success = 1;
+    string message = 2;
+    string challenge = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Layer 4: Exchange
+// ---------------------------------------------------------------------------
+
+message ROARMessageProto {
+    string roar = 1;
+    string id = 2;
+    AgentIdentityProto from = 3;
+    AgentIdentityProto to = 4;
+    string intent = 5;                    // execute|delegate|update|ask|respond|notify|discover
+    bytes payload_json = 6;               // JSON-encoded payload
+    bytes context_json = 7;               // JSON-encoded context
+    map<string, string> auth = 8;         // signature, timestamp, public_key
+    double timestamp = 9;
+}
+
+// ---------------------------------------------------------------------------
+// Layer 5: Stream
+// ---------------------------------------------------------------------------
+
+message StreamEventProto {
+    string type = 1;                      // tool_call|mcp_request|reasoning|task_update|...
+    string source = 2;                    // DID of emitting agent
+    string session_id = 3;
+    bytes data_json = 4;                  // JSON-encoded data
+    double timestamp = 5;
+    string trace_id = 6;
+}
+
+message StreamRequest {
+    string session_id = 1;
+    repeated string event_types = 2;      // Filter: only these event types
+    repeated string source_dids = 3;      // Filter: only from these agents
+    bool replay = 4;                      // Replay recent events on connect
+}
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+message HealthRequest {}
+
+message HealthResponse {
+    string status = 1;
+    string protocol = 2;
+    int32 agents_count = 3;
+    int32 peers_count = 4;
+    map<string, string> dependencies = 5;
+}

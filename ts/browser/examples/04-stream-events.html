@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROAR — Stream Events</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 2rem; }
+    h1 { color: #58a6ff; margin-bottom: 0.5rem; font-size: 1.4rem; }
+    p.sub { color: #8b949e; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    button { border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.8rem; }
+    button.start { background: #238636; color: #fff; }
+    button.stop { background: #da3633; color: #fff; }
+    button.filter { background: #30363d; color: #c9d1d9; border: 1px solid #484f58; }
+    button.filter.active { background: #1f6feb; border-color: #1f6feb; }
+    .feed { background: #161b22; border: 1px solid #30363d; border-radius: 8px; max-height: 600px; overflow-y: auto; }
+    .event { padding: 0.5rem 1rem; border-bottom: 1px solid #21262d; font-size: 0.8rem; display: flex; align-items: center; gap: 0.75rem; }
+    .event:hover { background: #1c2128; }
+    .event .type { display: inline-block; min-width: 120px; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; text-align: center; }
+    .type-tool_call { background: #1a4b2e; color: #7ee787; }
+    .type-mcp_request { background: #2d1a4b; color: #d2a8ff; }
+    .type-reasoning { background: #4b3a1a; color: #e3b341; }
+    .type-task_update { background: #1a3a4b; color: #58a6ff; }
+    .type-monitor_alert { background: #4b1a1a; color: #f85149; }
+    .type-agent_status { background: #1a4b45; color: #56d4dd; }
+    .type-checkpoint { background: #3d3d1a; color: #d4c456; }
+    .type-world_update { background: #1a2d4b; color: #79c0ff; }
+    .event .ts { color: #484f58; font-size: 0.7rem; min-width: 90px; }
+    .event .source { color: #8b949e; font-size: 0.7rem; }
+    .stats { color: #8b949e; font-size: 0.8rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>ROAR Protocol — Stream Events</h1>
+  <p class="sub">Real-time event feed visualization with filtering by event type.</p>
+
+  <div class="controls">
+    <button class="start" id="start-btn">Start Stream</button>
+    <button class="stop" id="stop-btn">Stop</button>
+    <span style="color:#484f58;padding:0.4rem">|</span>
+    <button class="filter active" data-type="all">All</button>
+    <button class="filter" data-type="tool_call">tool_call</button>
+    <button class="filter" data-type="task_update">task_update</button>
+    <button class="filter" data-type="reasoning">reasoning</button>
+    <button class="filter" data-type="agent_status">agent_status</button>
+    <button class="filter" data-type="monitor_alert">monitor_alert</button>
+    <button class="filter" data-type="mcp_request">mcp_request</button>
+    <button class="filter" data-type="checkpoint">checkpoint</button>
+    <button class="filter" data-type="world_update">world_update</button>
+  </div>
+  <div class="stats" id="stats">0 events</div>
+  <div class="feed" id="feed"></div>
+
+  <script type="module">
+    const types = ['tool_call','mcp_request','reasoning','task_update','monitor_alert','agent_status','checkpoint','world_update'];
+    const agents = ['did:roar:agent:alice-001','did:roar:agent:bob-002','did:roar:agent:codebot-003','did:roar:agent:monitor-004'];
+    const sessions = ['sess-alpha','sess-beta','sess-gamma'];
+    let events = [], interval = null, filter = 'all', total = 0;
+
+    function randomEvent() {
+      const type = types[Math.floor(Math.random()*types.length)];
+      const source = agents[Math.floor(Math.random()*agents.length)];
+      return { type, source, session_id: sessions[Math.floor(Math.random()*sessions.length)], data: { seq: total, detail: `Event from ${source.split(':').pop()}` }, timestamp: Date.now()/1000 };
+    }
+
+    function renderEvent(e) {
+      if (filter !== 'all' && e.type !== filter) return;
+      const feed = document.getElementById('feed');
+      const div = document.createElement('div');
+      div.className = 'event';
+      const ts = new Date(e.timestamp*1000).toLocaleTimeString();
+      div.innerHTML = `<span class="ts">${ts}</span><span class="type type-${e.type}">${e.type}</span><span class="source">${e.source.split(':').pop()}</span><span>${JSON.stringify(e.data)}</span>`;
+      feed.insertBefore(div, feed.firstChild);
+      while (feed.children.length > 200) feed.removeChild(feed.lastChild);
+    }
+
+    document.getElementById('start-btn').addEventListener('click', () => {
+      if (interval) return;
+      interval = setInterval(() => {
+        const e = randomEvent();
+        events.push(e);
+        total++;
+        renderEvent(e);
+        document.getElementById('stats').textContent = `${total} events (${filter === 'all' ? 'showing all' : `filtering: ${filter}`})`;
+      }, 200);
+    });
+
+    document.getElementById('stop-btn').addEventListener('click', () => {
+      clearInterval(interval);
+      interval = null;
+    });
+
+    document.querySelectorAll('.filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filter = btn.dataset.type;
+        // Re-render with filter
+        document.getElementById('feed').innerHTML = '';
+        events.filter(e => filter === 'all' || e.type === filter).slice(-100).forEach(renderEvent);
+      });
+    });
+  </script>
+</body>
+</html>

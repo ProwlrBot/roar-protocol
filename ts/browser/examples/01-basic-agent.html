@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ROAR — Basic Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'SF Mono', 'Fira Code', monospace; background: #0d1117; color: #c9d1d9; padding: 2rem; }
+    h1 { color: #58a6ff; margin-bottom: 0.5rem; font-size: 1.4rem; }
+    p.sub { color: #8b949e; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }
+    .card h2 { color: #58a6ff; font-size: 1rem; margin-bottom: 0.75rem; }
+    pre { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; color: #e6edf3; }
+    .badge { display: inline-block; background: #238636; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin-left: 0.5rem; }
+    button { background: #238636; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.9rem; margin-top: 0.5rem; }
+    button:hover { background: #2ea043; }
+    #output { min-height: 200px; }
+  </style>
+</head>
+<body>
+  <h1>ROAR Protocol — Basic Agent <span class="badge">Browser SDK</span></h1>
+  <p class="sub">Create an agent identity, build a message, sign it with HMAC-SHA256, and verify — all in-browser using Web Crypto API.</p>
+
+  <button id="run-btn">Run Demo</button>
+
+  <div class="card" style="margin-top: 1rem;">
+    <h2>Output</h2>
+    <pre id="output">Click "Run Demo" to start...</pre>
+  </div>
+
+  <script type="module">
+    // Import from built SDK (run: npm run build first, or use npx serve)
+    // For demo purposes, we inline the core logic:
+
+    function createIdentity(name, type = 'agent') {
+      const uid = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      const slug = name.toLowerCase().replace(/\s+/g, '-').slice(0, 20) || 'agent';
+      return {
+        did: `did:roar:${type}:${slug}-${uid}`,
+        display_name: name,
+        agent_type: type,
+        capabilities: [],
+        version: '1.0',
+        public_key: null
+      };
+    }
+
+    function createMessage(from, to, intent, payload = {}) {
+      const uid = Array.from(crypto.getRandomValues(new Uint8Array(5)))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+      return {
+        roar: '1.0', id: `msg_${uid}`,
+        from, to, intent, payload,
+        context: {}, auth: {},
+        timestamp: Date.now() / 1000
+      };
+    }
+
+    async function signMessage(msg, secret) {
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const body = JSON.stringify({
+        id: msg.id, from: msg.from.did, to: msg.to.did,
+        intent: msg.intent, payload: msg.payload,
+        context: msg.context, timestamp: msg.timestamp
+      }, Object.keys({id:0,from:0,to:0,intent:0,payload:0,context:0,timestamp:0}).sort());
+      const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(body));
+      const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+      msg.auth = { signature: `hmac-sha256:${hex}`, timestamp: msg.timestamp };
+      return msg;
+    }
+
+    const out = document.getElementById('output');
+    document.getElementById('run-btn').addEventListener('click', async () => {
+      out.textContent = '';
+      const log = (s) => { out.textContent += s + '\n'; };
+
+      log('1. Creating agent identities...');
+      const alice = createIdentity('Alice', 'agent');
+      const bob = createIdentity('Bob', 'agent');
+      log(`   Alice: ${alice.did}`);
+      log(`   Bob:   ${bob.did}`);
+
+      log('\n2. Creating a message (ask intent)...');
+      const msg = createMessage(alice, bob, 'ask', { question: 'What is ROAR Protocol?' });
+      log(`   Message ID: ${msg.id}`);
+
+      log('\n3. Signing with HMAC-SHA256 via Web Crypto...');
+      await signMessage(msg, 'demo-secret-key');
+      log(`   Signature: ${msg.auth.signature.slice(0, 50)}...`);
+
+      log('\n4. Full signed message:');
+      log(JSON.stringify(msg, null, 2));
+
+      log('\n✓ Done — all operations ran in-browser with zero server calls.');
+    });
+  </script>
+</body>
+</html>
