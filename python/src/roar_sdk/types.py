@@ -168,8 +168,8 @@ class ROARMessage(BaseModel):
 
     roar: str = "1.0"
     id: str = Field(default_factory=lambda: f"msg_{uuid.uuid4().hex[:10]}")
-    from_identity: AgentIdentity = Field(alias="from")
-    to_identity: AgentIdentity = Field(alias="to")
+    from_identity: AgentIdentity = Field(validation_alias="from", serialization_alias="from")
+    to_identity: AgentIdentity = Field(validation_alias="to", serialization_alias="to")
     intent: MessageIntent
     payload: Dict[str, Any] = Field(default_factory=dict)
     context: Dict[str, Any] = Field(default_factory=dict)
