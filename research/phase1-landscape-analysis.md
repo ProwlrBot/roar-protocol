@@ -7,7 +7,7 @@ Version: 1.0 | Status: Draft
 
 ## Overview
 
-The agentic AI ecosystem has produced four major interoperability protocols in parallel, each addressing a narrow slice of the agent communication problem. ROAR (Real-time Open Agent Runtime) is designed as a unified 5-layer stack that subsumes all of them without replacing them — any existing MCP, A2A, ACP, or ANP agent can participate in a ROAR network through adapters.
+The agentic AI ecosystem has produced four major interoperability protocols in parallel, each addressing a narrow slice of the agent communication problem. ROAR (Routable Open Agent Runtime) is designed as a unified 5-layer stack that subsumes all of them without replacing them — any existing MCP, A2A, ACP, or ANP agent can participate in a ROAR network through adapters.
 
 This document maps each protocol's architecture, identifies its gaps, and defines the use cases that ROAR uniquely enables.
 

@@ -1,6 +1,6 @@
 # @roar-protocol/sdk-browser
 
-Browser/WASM SDK for the [ROAR Protocol](https://github.com/ProwlrBot/roar-protocol) (Real-time Open Agent Runtime).
+Browser/WASM SDK for the [ROAR Protocol](https://github.com/ProwlrBot/roar-protocol) (Routable Open Agent Runtime).
 
 This is the browser-compatible version of the ROAR Protocol TypeScript SDK. It replaces Node.js `crypto` built-ins with the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) and removes all `fs`/`net` dependencies.
 

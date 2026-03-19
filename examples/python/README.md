@@ -57,17 +57,17 @@ INFO     verify    : True
 
 ---
 
-## Option B: Client talking to ProwlrBot
+## Option B: Client talking to a ROAR Hub
 
-If you have ProwlrBot running (`prowlr app`), you can point the client at it instead. The ROAR router is mounted at port 8088 by default.
+If you have a ROARHub running, you can point the client at it instead. The ROAR router is mounted at port 8090 by default.
 
 Edit `client.py`:
 
 ```python
-SERVER_URL = "http://127.0.0.1:8088"
+SERVER_URL = "http://127.0.0.1:8090"
 ```
 
-ProwlrBot exposes ROAR endpoints at `/roar/*`.
+ROARHub exposes ROAR endpoints at `/roar/*`.
 
 ---
 

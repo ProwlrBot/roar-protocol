@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 """Abstract token use-count store for delegation token enforcement.
 
-The default InMemoryTokenStore is safe for single-worker deployments.
+The default InMemoryTokenStore is safe for single-worker async deployments
+(uses threading.Lock for coroutine-safety across await boundaries).
 For multi-worker production, use RedisTokenStore (requires redis package).
 
 Both stores are safe against race conditions within their scope:
-- InMemoryTokenStore: GIL-safe integer increment (single process)
+- InMemoryTokenStore: Lock-protected (single process, multiple coroutines)
 - RedisTokenStore: INCR is atomic on the Redis server (across processes)
 """
 
 from __future__ import annotations
 
+import threading
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -29,17 +31,23 @@ class TokenStore(ABC):
 
 
 class InMemoryTokenStore(TokenStore):
-    """Single-process in-memory store. NOT safe across multiple workers."""
+    """Single-process in-memory store. NOT safe across multiple workers.
+
+    Uses a threading lock so that concurrent async coroutines cannot
+    interleave between the read and write in get_and_increment().
+    """
 
     def __init__(self) -> None:
         self._counts: dict[str, int] = {}
+        self._lock = threading.Lock()
 
     def get_and_increment(self, token_id: str, max_uses: Optional[int]) -> bool:
-        current = self._counts.get(token_id, 0)
-        if max_uses is not None and current >= max_uses:
-            return False
-        self._counts[token_id] = current + 1
-        return True
+        with self._lock:
+            current = self._counts.get(token_id, 0)
+            if max_uses is not None and current >= max_uses:
+                return False
+            self._counts[token_id] = current + 1
+            return True
 
     def get_count(self, token_id: str) -> int:
         return self._counts.get(token_id, 0)

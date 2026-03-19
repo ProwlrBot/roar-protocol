@@ -26,9 +26,10 @@ docs/superpowers/specs/
 .test-venv/
 .demo-venv/
 
-# Security keys (never commit)
+# Security keys and audit artifacts (never commit)
 .security-key
 logs/security/
+SECURITY-FINDINGS.md
 
 # Secrets and environment (never commit)
 .env

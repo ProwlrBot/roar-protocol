@@ -176,10 +176,11 @@ class ROARHub:
 
             try:
                 challenge = hub._challenge_store.issue(did, public_key, card_raw)
-            except RuntimeError as exc:
+            except RuntimeError:
+                logger.warning("Challenge store at capacity for DID: %s", did)
                 return JSONResponse(
                     status_code=503,
-                    content={"error": str(exc)},
+                    content={"error": "Server busy — too many pending registrations. Try again later."},
                 )
 
             logger.info("Challenge issued for DID: %s  challenge_id: %s", did, challenge.challenge_id)
@@ -304,12 +305,25 @@ class ROARHub:
         # ── Agent lookup ──────────────────────────────────────────────────
 
         @app.get("/roar/agents")
-        async def list_agents(capability: Optional[str] = None):
+        async def list_agents(
+            capability: Optional[str] = None,
+            limit: int = 100,
+            offset: int = 0,
+        ):
+            limit = max(1, min(limit, 1000))  # Clamp: 1..1000
+            offset = max(0, offset)
             if capability:
                 entries = hub._directory.search(capability)
             else:
                 entries = hub._directory.list_all()
-            return {"agents": [e.model_dump() for e in entries]}
+            total = len(entries)
+            page = entries[offset : offset + limit]
+            return {
+                "agents": [e.model_dump() for e in page],
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+            }
 
         @app.get("/roar/agents/{did:path}")
         async def lookup_agent(did: str):
@@ -329,14 +343,16 @@ class ROARHub:
             import hmac as _hmac
             import os as _os
             fed_secret = _os.getenv("ROAR_FEDERATION_SECRET", "")
-            if fed_secret:
-                auth_header = request.headers.get("authorization", "")
-                if not auth_header.startswith("Bearer ") or not _hmac.compare_digest(
-                    auth_header[7:], fed_secret
-                ):
-                    raise HTTPException(status_code=401, detail="Invalid federation secret")
-            else:
-                logger.warning("ROAR_FEDERATION_SECRET not set — federation sync is unauthenticated")
+            if not fed_secret:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Federation not configured: ROAR_FEDERATION_SECRET is not set",
+                )
+            auth_header = request.headers.get("authorization", "")
+            if not auth_header.startswith("Bearer ") or not _hmac.compare_digest(
+                auth_header[7:], fed_secret
+            ):
+                raise HTTPException(status_code=401, detail="Invalid federation secret")
 
             body = await _read_bounded_json(request)
             entries = body.get("entries", [])
@@ -353,8 +369,24 @@ class ROARHub:
             return {"imported": imported, "total": len(entries)}
 
         @app.get("/roar/federation/export")
-        async def export_for_peers():
-            """Export all local entries for peer hubs to import."""
+        async def export_for_peers(request: Request):
+            """Export all local entries for peer hubs to import.
+
+            Requires Authorization header with federation secret.
+            """
+            import hmac as _hmac
+            import os as _os
+            fed_secret = _os.getenv("ROAR_FEDERATION_SECRET", "")
+            if not fed_secret:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Federation not configured: ROAR_FEDERATION_SECRET is not set",
+                )
+            auth_header = request.headers.get("authorization", "")
+            if not auth_header.startswith("Bearer ") or not _hmac.compare_digest(
+                auth_header[7:], fed_secret
+            ):
+                raise HTTPException(status_code=401, detail="Invalid federation secret")
             entries = hub._directory.list_all()
             return {
                 "hub_url": hub._hub_url,
@@ -410,7 +442,8 @@ class ROARHub:
                     r = await client.post(f"{peer.rstrip('/')}/roar/federation/sync", json=payload)
                     results[peer] = {"status": r.status_code, "imported": r.json().get("imported", 0)}
                 except Exception as exc:
-                    results[peer] = {"status": "error", "detail": str(exc)}
+                    logger.warning("Federation push to %s failed: %s", peer, exc)
+                    results[peer] = {"status": "error", "detail": "Federation sync failed"}
         return results
 
     async def pull_from_peers(self) -> dict:
@@ -441,5 +474,6 @@ class ROARHub:
                             pass
                     results[peer] = {"imported": imported}
                 except Exception as exc:
-                    results[peer] = {"status": "error", "detail": str(exc)}
+                    logger.warning("Federation pull from %s failed: %s", peer, exc)
+                    results[peer] = {"status": "error", "detail": "Federation pull failed"}
         return results

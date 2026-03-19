@@ -24,7 +24,7 @@ What should have happened instead.
 
 - OS:
 - Python version:
-- ProwlrBot version:
+- ROAR SDK version:
 - Relevant config:
 
 ## Logs / Screenshots

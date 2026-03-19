@@ -72,7 +72,7 @@ See [SDK-ROADMAP.md](SDK-ROADMAP.md) for open tasks, divergence issues, and what
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│  Layer 5: Stream    Real-time events (8 types, SSE/WS) │
+│  Layer 5: Stream    Real-time events (11 types, SSE/WS)│
 ├────────────────────────────────────────────────────────┤
 │  Layer 4: Exchange  One message format, 7 intents      │
 ├────────────────────────────────────────────────────────┤
@@ -181,15 +181,15 @@ The existing protocols each solve one slice of the problem:
 | Transports | 4 | 2 | 1 | 2 |
 | Graduated autonomy | ✅ | ❌ | ❌ | ❌ |
 
-**ROAR does not replace MCP or A2A.** It provides a unified identity and message envelope so you can use MCP, A2A, and ACP together in the same system. ProwlrBot speaks all four — MCPAdapter and A2AAdapter translate automatically.
+**ROAR does not replace MCP or A2A.** It provides a unified identity and message envelope so you can use MCP, A2A, and ACP together in the same system. The MCPAdapter and A2AAdapter translate automatically.
 
 ### Concrete Scenario
 
-An IDE (Claude Code) delegates work to a local ProwlrBot agent, which in turn delegates to a cloud agent that uses MCP tools. Without ROAR, each handoff requires a custom integration. With ROAR:
+An IDE (Claude Code) delegates work to a local ROAR agent, which in turn delegates to a cloud agent that uses MCP tools. Without ROAR, each handoff requires a custom integration. With ROAR:
 
 ```
 IDE (did:roar:ide:claude-...)
-  → DELEGATE → ProwlrBot (did:roar:agent:prowlr-...)
+  → DELEGATE → Router Agent (did:roar:agent:router-...)
     → DELEGATE → Cloud Agent (did:roar:agent:cloud-...)
       → EXECUTE → MCP Tool (did:roar:tool:shell-...)
         → RESPOND ←
@@ -326,7 +326,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines.
 
 ## Origin
 
-I'm [@kdairatchi](https://github.com/kdairatchi). I started building ProwlrBot as an autonomous agent platform and kept running into the same friction: agents that couldn't find each other, messages without a standard format, and protocol integrations that were one-offs every time.
+I'm [@kdairatchi](https://github.com/kdairatchi). I started building an autonomous agent platform and kept running into the same friction: agents that couldn't find each other, messages without a standard format, and protocol integrations that were one-offs every time.
 
 ROAR came out of building real multi-agent systems and getting frustrated with the gaps. The design emerged from studying MCP, A2A, ACP, W3C DIDs, and DIDComm — then distilling what was genuinely missing: a single identity layer, a single message envelope, and real federation between them.
 

@@ -1,6 +1,6 @@
 # ROAR Protocol Architecture
 
-**Real-time Open Agent Runtime — Layer Model and Intellectual Foundations**
+**Routable Open Agent Runtime — Layer Model and Intellectual Foundations**
 
 ---
 

@@ -18,7 +18,7 @@ Work through this list before exposing any ROAR component to a network.
 | 3 | **TLS termination** | None (plain HTTP) | Place ROARHub and ROARServer behind nginx or Caddy with a valid TLS certificate. Never expose plain HTTP to the public internet |
 | 4 | **`SESSION_SECRET`** | Not set | Set a strong random value in environment; rotate periodically (at minimum, on any suspected compromise) |
 | 5 | **Token store** | `InMemoryTokenStore` | Use `RedisTokenStore` for all multi-worker deployments (see Section 3) |
-| 6 | **Migration check** | Skip by default | Set `PROWLRBOT_SKIP_MIGRATION_CHECK=false` in production to ensure schema migrations are applied at startup |
+| 6 | **Migration check** | Skip by default | Set `ROAR_SKIP_MIGRATION_CHECK=false` in production to ensure schema migrations are applied at startup |
 | 7 | **Ingest services** | `SKIP_INGEST_SERVICES=true` | Set to `false` only after configuring all required message brokers; do not enable with missing broker config |
 | 8 | **Process supervisor** | None | Use systemd, pm2, or supervisord — never run bare `uvicorn` in production without a restart policy |
 | 9 | **Log rotation** | None | Configure logrotate or equivalent to prevent log files from exhausting disk. Rotate daily, retain 30 days compressed |
@@ -273,9 +273,9 @@ No other roar-sdk direct dependencies had findings. The full audit flagged many 
 
 ---
 
-## 6. Secrets Management
+## 7. Secrets Management
 
-### 6.1 Generating Secrets
+### 7.1 Generating Secrets
 
 Use the CLI to generate all required secrets:
 
@@ -302,7 +302,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 python -c "from roar_sdk.signing import generate_keypair; priv, pub = generate_keypair(); print(f'PRIVATE={priv}\nPUBLIC={pub}')"
 ```
 
-### 6.2 Environment Variables
+### 7.2 Environment Variables
 
 Store secrets in environment variables, never in source code. Use a `.env` file for local development (see `.env.example`):
 
@@ -314,7 +314,7 @@ Store secrets in environment variables, never in source code. Use a `.env` file 
 | `ROAR_ED25519_PRIVATE_KEY` | Ed25519 private key (hex) | If using Ed25519 |
 | `ROAR_ED25519_PUBLIC_KEY` | Ed25519 public key (hex) | If using Ed25519 |
 
-### 6.3 Key Rotation
+### 7.3 Key Rotation
 
 ROAR supports zero-downtime key rotation via `KeyTrustStore`:
 
@@ -334,7 +334,7 @@ store.rotate_key(agent.did, new_public_key)
 # Old key stays valid for 24h, then auto-expires
 ```
 
-### 6.4 What Not to Do
+### 7.4 What Not to Do
 
 - Never commit `.env` files (already in `.gitignore`)
 - Never hardcode secrets in source code — use `os.environ.get()`

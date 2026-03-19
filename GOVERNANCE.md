@@ -1,6 +1,6 @@
 # ROAR Protocol Governance
 
-**Real-time Open Agent Runtime — Governance Model v0.1**
+**Routable Open Agent Runtime — Governance Model v0.1**
 
 ---
 
@@ -210,20 +210,18 @@ What else was considered and why rejected.
 
 ---
 
-## Relationship to ProwlrBot
+## Relationship to Reference Implementations
 
-[ProwlrBot](https://github.com/ProwlrBot/prowlrbot) is the reference
-implementation of ROAR. It is maintained by the same author and tracks the
-spec closely. However:
+The `roar-sdk` Python and TypeScript packages are the reference implementations
+of ROAR. They are maintained by the same author and track the spec closely.
+However:
 
-- ProwlrBot may add features not in the ROAR spec (platform-specific concerns)
-- The ROAR spec is the authority on wire format, not ProwlrBot
+- Platform integrations may add features not in the ROAR spec (platform-specific concerns)
+- The ROAR spec is the authority on wire format, not any single SDK
 - Other implementations (third-party agents, SDKs) are equally valid if
   they pass the conformance suite
 
-The ProwlrBot SDK (`prowlrbot.protocols.sdk`) and the standalone
-`roar-sdk` Python package should maintain feature parity. The audit table is
-in [SDK-ROADMAP.md](SDK-ROADMAP.md).
+The SDK feature audit table is in [SDK-ROADMAP.md](SDK-ROADMAP.md).
 
 ---
 

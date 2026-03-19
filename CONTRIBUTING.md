@@ -37,7 +37,7 @@ Spec changes without a prior RFC issue will not be merged.
 
 ## Contributing to the Python SDK
 
-The Python SDK lives in `python/`. It is a standalone `roar-sdk` package with no dependency on ProwlrBot or any external platform.
+The Python SDK lives in `python/`. It is a standalone `roar-sdk` package with no external platform dependencies.
 
 ```bash
 cd python

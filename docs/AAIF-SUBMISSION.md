@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-The **Real-time Open Agent Runtime (ROAR)** is a five-layer protocol that bridges MCP, A2A, and ACP into a unified agent communication framework. Rather than replacing these protocols, ROAR provides the missing connective tissue: a single message format, cryptographic identity layer, and discovery mechanism that allows MCP tool servers, A2A agent networks, and ACP IDE integrations to interoperate without custom glue code.
+The **Routable Open Agent Runtime (ROAR)** is a five-layer protocol that bridges MCP, A2A, and ACP into a unified agent communication framework. Rather than replacing these protocols, ROAR provides the missing connective tissue: a single message format, cryptographic identity layer, and discovery mechanism that allows MCP tool servers, A2A agent networks, and ACP IDE integrations to interoperate without custom glue code.
 
 ROAR addresses a gap in the current AAIF protocol landscape. MCP excels at tool integration. A2A excels at agent-to-agent task delegation. But no standard exists for an agent that needs to call an MCP tool, delegate to an A2A peer, update an IDE via ACP, and stream progress to a dashboard — all within the same session, with a unified identity and cryptographic audit trail. ROAR is that standard.
 
@@ -85,7 +85,7 @@ Agent identity is a first-class protocol concern, not an application-level after
 | Agent discovery | Server-side tool listing | Federated directory with capability search |
 | Agent-to-agent | Not supported | Native (delegate intent) |
 | Audit trail | Not specified | Tamper-evident hash chain |
-| Streaming | SSE-based notifications | EventBus with 8 event types, AIMD backpressure |
+| Streaming | SSE-based notifications | EventBus with 11 event types, AIMD backpressure |
 
 ROAR does not replace MCP. The `MCPAdapter` translates MCP tool calls to ROAR `execute` messages bidirectionally. An MCP server can be registered as a ROAR tool agent and discovered by any ROAR agent without modification to the MCP server.
 
@@ -179,7 +179,7 @@ Both SDKs are at feature parity:
 - Discovery: In-memory directory, hub-based directory, federation sync
 - Connect: HTTP, WebSocket, stdio transports with configurable auth
 - Exchange: ROARMessage with 7 intents, HMAC-SHA256, Ed25519, StrictMessageVerifier
-- Stream: EventBus with 8 event types, SSE delivery, AIMD backpressure
+- Stream: EventBus with 11 event types, SSE delivery, AIMD backpressure
 
 ### 5.2 Specification Completeness
 

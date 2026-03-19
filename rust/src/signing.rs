@@ -148,10 +148,18 @@ pub fn verify_message(msg: &ROARMessage, secret: &str) -> bool {
     let result = mac.finalize();
     let actual_hex = hex::encode(result.into_bytes());
 
-    // Constant-time comparison via hmac crate is ideal, but hex comparison
-    // of the computed value is acceptable here since we are comparing our own
-    // computation against the claimed value.
-    actual_hex == expected_hex
+    // Constant-time comparison to prevent timing side-channels.
+    // The attacker controls expected_hex, so variable-time == would
+    // leak the correct signature byte-by-byte.
+    if actual_hex.len() != expected_hex.len() {
+        return false;
+    }
+    actual_hex
+        .as_bytes()
+        .iter()
+        .zip(expected_hex.as_bytes())
+        .fold(0u8, |acc, (a, b)| acc | (a ^ b))
+        == 0
 }
 
 // ---------------------------------------------------------------------------

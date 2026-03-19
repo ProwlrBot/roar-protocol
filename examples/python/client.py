@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """ROAR Protocol — Client Example.
 
-Connects to the echo server (examples/python/echo_server.py) OR to a running
-ProwlrBot instance (prowlr app), registers itself, and sends a DELEGATE message.
+Connects to the echo server (examples/python/echo_server.py), registers itself,
+and sends a DELEGATE message.
 
 Demonstrates:
   Layer 1 — creating an AgentIdentity
@@ -11,11 +11,11 @@ Demonstrates:
   Layer 4 — building, signing, and sending a ROARMessage
 
 Requirements:
-    pip install -e ".[dev]"  (from the prowlrbot repo)
+    pip install -e "python/[dev]"  (from the roar-protocol repo)
     pip install httpx
 
 Usage:
-    # Terminal 1: start the echo server (or: prowlr app)
+    # Terminal 1: start the echo server
     python3 examples/python/echo_server.py
 
     # Terminal 2: run this client

@@ -2,8 +2,11 @@
 """Redis-backed per-IP rate limiting middleware for FastAPI/Starlette.
 
 Provides two sliding windows (per-minute and per-hour) using atomic
-Redis INCR+EXPIRE pipelines. Gracefully degrades if Redis is unavailable
-(requests pass through rather than being blocked).
+Redis INCR+EXPIRE pipelines.
+
+By default the middleware is **fail-closed**: if Redis is unavailable,
+requests are rejected with 503. Set ``fail_open=True`` to allow requests
+through when Redis is down (not recommended for production).
 """
 
 from __future__ import annotations
@@ -19,6 +22,15 @@ from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
+_REDIS_UNAVAILABLE_RESPONSE = JSONResponse(
+    {
+        "error": "service_unavailable",
+        "message": "Rate limiting backend unavailable. Try again later.",
+    },
+    status_code=503,
+    headers={"Retry-After": "5"},
+)
+
 
 class RedisRateLimiter(BaseHTTPMiddleware):
     """Per-IP rate limiter backed by Redis.
@@ -27,6 +39,8 @@ class RedisRateLimiter(BaseHTTPMiddleware):
         ROAR_RATE_LIMIT_PER_MINUTE  (default: 100)
         ROAR_RATE_LIMIT_PER_HOUR    (default: 1000)
         ROAR_REDIS_URL              (default: redis://localhost:6379)
+        ROAR_RATE_LIMIT_FAIL_OPEN   (default: false) — set to "true" to pass
+                                    requests through when Redis is unavailable
     """
 
     def __init__(
@@ -35,6 +49,7 @@ class RedisRateLimiter(BaseHTTPMiddleware):
         redis_url: Optional[str] = None,
         per_minute: Optional[int] = None,
         per_hour: Optional[int] = None,
+        fail_open: Optional[bool] = None,
     ) -> None:
         super().__init__(app)
         self._redis_url = redis_url or os.getenv(
@@ -46,6 +61,10 @@ class RedisRateLimiter(BaseHTTPMiddleware):
         self._per_hour = per_hour or int(
             os.getenv("ROAR_RATE_LIMIT_PER_HOUR", "1000")
         )
+        if fail_open is not None:
+            self._fail_open = fail_open
+        else:
+            self._fail_open = os.getenv("ROAR_RATE_LIMIT_FAIL_OPEN", "false").lower() == "true"
         self._client = None
 
     def _get_client(self):
@@ -107,11 +126,20 @@ class RedisRateLimiter(BaseHTTPMiddleware):
         count = result[0]
         return count, count <= limit
 
+    def _handle_redis_failure(self, request: Request, call_next, exc: Exception):
+        """Handle Redis failure according to fail_open policy."""
+        if self._fail_open:
+            logger.warning("Rate limiter error (fail-open), passing through: %s", exc)
+            return None  # caller should call_next
+        logger.error("Rate limiter error (fail-closed), rejecting request: %s", exc)
+        return _REDIS_UNAVAILABLE_RESPONSE
+
     async def dispatch(self, request: Request, call_next) -> Response:
         r = self._get_client()
         if r is None:
-            # Redis unavailable — pass through
-            return await call_next(request)
+            if self._fail_open:
+                return await call_next(request)
+            return _REDIS_UNAVAILABLE_RESPONSE
 
         ip = self._get_client_ip(request)
         now_minute = int(time.time() // 60)
@@ -162,5 +190,7 @@ class RedisRateLimiter(BaseHTTPMiddleware):
             return response
 
         except Exception as exc:
-            logger.warning("Rate limiter error, passing through: %s", exc)
+            result = self._handle_redis_failure(request, call_next, exc)
+            if result is not None:
+                return result
             return await call_next(request)

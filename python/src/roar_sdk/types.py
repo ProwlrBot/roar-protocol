@@ -198,6 +198,7 @@ class ROARMessage(BaseModel):
                 "timestamp": self.auth.get("timestamp", self.timestamp),
             },
             sort_keys=True,
+            separators=(", ", ": "),
         )
 
     def sign(self, secret: str) -> "ROARMessage":

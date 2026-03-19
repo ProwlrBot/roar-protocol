@@ -1,6 +1,6 @@
 # ROAR Protocol — Threat Model
 
-**Version:** 0.2 (spec) / 0.3 (SDKs)
+**Version:** 0.3 (spec) / 0.3 (SDKs)
 **Date:** 2026-03-16
 **Scope:** ROAR Protocol specification, Python SDK, TypeScript SDK, ROARHub discovery server
 
@@ -141,7 +141,7 @@ Remote ROARHub instances that participate in inter-hub federation. They are trus
 - `verify_token()` verifies the Ed25519 signature over `capabilities`, `delegate_did`, `delegator_did`, `expires_at`, `issued_at`, `max_uses`, `token_id`, and `can_redelegate`.
 - Re-delegation is gated by `can_redelegate: bool` — a delegate cannot issue sub-tokens unless explicitly permitted.
 
-**Residual risk:** Token forgery is only possible if the delegator's Ed25519 private key is compromised (see 3.2). There is no key rotation mechanism in the current SDK.
+**Residual risk:** Token forgery is only possible if the delegator's Ed25519 private key is compromised (see 3.2). The Python SDK provides `KeyTrustStore` for key rotation with a grace period, but there is no spec-level key revocation mechanism.
 
 ---
 
@@ -274,11 +274,11 @@ Remote ROARHub instances that participate in inter-hub federation. They are trus
 ### 5.3 Symmetric HMAC — Key Compromise Affects All Sharing Agents
 HMAC-SHA256 uses a shared secret. Any party possessing the secret can forge messages as any other party using that secret. Key rotation requires coordinated restart of all agents. There is no per-agent key derivation or revocation in the current spec.
 
-### 5.4 Ed25519 Key Rotation Not Yet Supported
-The `AgentIdentity.public_key` field holds a single Ed25519 public key. There is no mechanism to rotate keys, publish key history, or revoke a compromised key without re-registering the agent with a new DID.
+### 5.4 Ed25519 Key Rotation — Limited Support
+The Python SDK provides `KeyTrustStore` with a configurable grace period for zero-downtime key rotation (see PRODUCTION-HARDENING.md §6.3). However, the `AgentIdentity.public_key` field holds a single key, and there is no spec-level mechanism to publish key history or revoke a compromised key without re-registering the agent with a new DID.
 
 ### 5.5 Federation Sync Not Per-Card Signed
 Hub-to-hub federation sync is authenticated at the channel level (shared secret) but individual agent cards received via federation are not independently signed by the originating agent. A compromised federation peer can inject arbitrary agent cards. Accepted risk pending a v0.4 federation signing specification.
 
-### 5.6 No Built-In Rate Limiting
-ROARHub and ROARServer do not implement request rate limiting. Relying on nginx or similar reverse proxies for this protection is required in production (see PRODUCTION-HARDENING.md Section 2.2).
+### 5.6 Rate Limiting
+The Python SDK includes built-in Redis-backed rate limiting via `roar_sdk.middleware.rate_limiter.RateLimiterMiddleware` (per-IP dual sliding windows). The TypeScript SDK includes rate limiting in its native HTTP router. For defense in depth, also configure rate limiting at the reverse proxy layer (see PRODUCTION-HARDENING.md §2.2).

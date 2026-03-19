@@ -1,0 +1,47 @@
+{
+  "_comment": "Golden fixture for nested objects, arrays, booleans, integers, and floats. Tests recursive key sorting, array preservation, and numeric type handling.",
+  "secret": "roar-conformance-test-secret",
+  "inputs": {
+    "id": "msg_nested_test1",
+    "from": "did:roar:agent:sender-f5e6d7c8a9b01234",
+    "to": "did:roar:agent:receiver-k1l2m3n4o5p6q7r8",
+    "intent": "execute",
+    "payload": {
+      "action": "deploy",
+      "config": {
+        "replicas": 3,
+        "resources": {
+          "memory": "512Mi",
+          "cpu": "250m"
+        },
+        "labels": {
+          "app": "roar-agent",
+          "version": "0.3.2"
+        }
+      },
+      "tags": [
+        "production",
+        "critical"
+      ],
+      "enabled": true,
+      "ratio": 0.75,
+      "count": 42
+    },
+    "context": {
+      "trace_id": "trace-abc123",
+      "parent_span_id": "span-def456"
+    },
+    "timestamp": 1710000000.0
+  },
+  "canonical_json": "{\"context\": {\"parent_span_id\": \"span-def456\", \"trace_id\": \"trace-abc123\"}, \"from\": \"did:roar:agent:sender-f5e6d7c8a9b01234\", \"id\": \"msg_nested_test1\", \"intent\": \"execute\", \"payload\": {\"action\": \"deploy\", \"config\": {\"labels\": {\"app\": \"roar-agent\", \"version\": \"0.3.2\"}, \"replicas\": 3, \"resources\": {\"cpu\": \"250m\", \"memory\": \"512Mi\"}}, \"count\": 42, \"enabled\": true, \"ratio\": 0.75, \"tags\": [\"production\", \"critical\"]}, \"timestamp\": 1710000000.0, \"to\": \"did:roar:agent:receiver-k1l2m3n4o5p6q7r8\"}",
+  "expected_signature": "hmac-sha256:bf13f9c1e345a6ac0912c535e07e470c0185cb27292afd3faa6736f628b03c21",
+  "edge_cases": [
+    "Nested object keys sorted at ALL levels (config.labels.app < config.labels.version)",
+    "Array elements NOT reordered (sort_keys applies to objects only)",
+    "Boolean true serializes as lowercase 'true'",
+    "Integer 42 serializes as '42' (no decimal)",
+    "Float 0.75 serializes as '0.75'",
+    "Integer 3 serializes as '3' (not '3.0') in payload",
+    "Timestamp 1710000000.0 MUST keep .0 suffix"
+  ]
+}

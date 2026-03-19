@@ -1,6 +1,6 @@
 # Layer 5: Stream
 
-> Real-time event streaming, 8 event types, pub/sub, SSE transport
+> Real-time event streaming, 11 event types, pub/sub, SSE transport
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
@@ -26,6 +26,9 @@ The Stream layer provides real-time event streaming for monitoring, coordination
 | `agent_status` | Agent | Agent went idle/busy/offline |
 | `checkpoint` | Agent | Checkpoint for crash recovery |
 | `world_update` | AgentVerse | Virtual world state changes |
+| `stream_start` | Agent | Stream lifecycle begin |
+| `stream_end` | Agent | Stream lifecycle end |
+| `agent_delegate` | Agent | Delegation events |
 
 ---
 
@@ -54,8 +57,8 @@ The Stream layer provides real-time event streaming for monitoring, coordination
 The in-process event distribution system:
 
 ```python
-from prowlrbot.protocols.sdk import EventBus
-from prowlrbot.protocols.roar import StreamEvent, StreamEventType
+from roar_sdk.streaming import EventBus
+from roar_sdk import StreamEvent, StreamEventType
 
 bus = EventBus()
 
@@ -88,11 +91,11 @@ data: {"type": "task_update", "source": "did:roar:agent:architect-...", "data": 
 data: {"type": "tool_call", "source": "did:roar:agent:frontend-...", "data": {...}}
 ```
 
-The A2A server (`src/prowlrbot/protocols/a2a_server.py`) provides this SSE endpoint backed by the ROAR EventBus.
+The ROAR SDK A2A adapter provides this SSE endpoint backed by the ROAR EventBus.
 
 ---
 
-## Integration with ProwlrHub
+## Integration with ROARHub
 
 | War Room Action | Stream Event |
 |----------------|--------------|
@@ -107,7 +110,7 @@ The A2A server (`src/prowlrbot/protocols/a2a_server.py`) provides this SSE endpo
 
 ## Design Decisions
 
-1. **8 fixed event types** — Implementations MUST use only the defined event types; custom values are NOT permitted on the wire.
+1. **11 fixed event types** — Implementations MUST use only the defined event types; custom values are NOT permitted on the wire.
 2. **SSE over WebSocket** — SSE SHOULD be used for server-to-client streaming; WebSocket MAY be used where bidirectionality is needed.
 3. **In-process EventBus** — No external message broker is REQUIRED for compliant implementations.
 4. **Source is a DID** — The `source` field MUST be a valid DID; events MUST always be attributable for audit trails.

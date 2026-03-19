@@ -34,12 +34,12 @@ assignees: ''
 
 | SDK | Impact | Migration |
 |:----|:-------|:----------|
-| Python (prowlrbot) | | |
+| Python (roar-sdk) | | |
 | TypeScript | | |
 
 ## Impact on Existing Implementations
 
-<!-- Will this break any deployed ProwlrBot instances? Will it break golden conformance fixtures? -->
+<!-- Will this break any deployed ROAR implementations? Will it break golden conformance fixtures? -->
 
 - [ ] Breaking change to wire format
 - [ ] New optional field (backward compatible)

@@ -1,6 +1,6 @@
 # ROAR Protocol Specification v0.3.0
 
-**Real-time Open Agent Runtime**
+**Routable Open Agent Runtime**
 *Designed by [@kdairatchi](https://github.com/kdairatchi)*
 
 ---
@@ -142,7 +142,7 @@ See [spec/04-exchange.md](spec/04-exchange.md) for the full specification.
 
 ## Layer 5 — Stream
 
-Real-time events use `StreamEvent` objects. Eight event types cover everything from tool calls to virtual world updates.
+Real-time events use `StreamEvent` objects. Eleven event types cover everything from tool calls to virtual world updates.
 
 ### StreamEvent Wire Format
 
@@ -160,7 +160,7 @@ Real-time events use `StreamEvent` objects. Eight event types cover everything f
 }
 ```
 
-### The 8 Event Types
+### The 11 Event Types
 
 | Type | Source | Use case |
 |:-----|:-------|:---------|
@@ -172,6 +172,9 @@ Real-time events use `StreamEvent` objects. Eight event types cover everything f
 | `agent_status` | Agent | Agent went idle/busy/offline |
 | `checkpoint` | Agent | Checkpoint for crash recovery |
 | `world_update` | AgentVerse | Virtual world state changes |
+| `stream_start` | Agent | Stream lifecycle begin |
+| `stream_end` | Agent | Stream lifecycle end |
+| `agent_delegate` | Agent | Delegation events |
 
 **JSON Schema:** [`spec/schemas/stream-event.json`](spec/schemas/stream-event.json)
 
@@ -218,11 +221,11 @@ ACP operation types map to ROAR `MessageIntent` values. ACP is the protocol used
 ### Client
 
 ```python
-from prowlrbot.protocols.roar import AgentIdentity, AgentCard, MessageIntent
-from prowlrbot.protocols.sdk.client import ROARClient
+from roar_sdk import AgentIdentity, AgentCard, MessageIntent, ROARClient
+import os
 
 identity = AgentIdentity(display_name="my-agent", capabilities=["code-review"])
-client = ROARClient(identity, signing_secret="shared-secret")
+client = ROARClient(identity, signing_secret=os.environ.get("ROAR_SIGNING_SECRET", ""))
 
 card = AgentCard(identity=identity, description="Reviews code")
 client.register(card)
@@ -237,8 +240,7 @@ response = await client.send_remote(
 ### Server
 
 ```python
-from prowlrbot.protocols.roar import AgentIdentity, MessageIntent, ROARMessage
-from prowlrbot.protocols.sdk.server import ROARServer
+from roar_sdk import AgentIdentity, MessageIntent, ROARMessage, ROARServer
 
 identity = AgentIdentity(display_name="code-reviewer")
 server = ROARServer(identity, port=8089, signing_secret="shared-secret")

@@ -31,7 +31,7 @@ tests/conformance/golden/
 
 ## Running Python Conformance
 
-Requires: `pip install -e ".[dev]"` from [prowlrbot](https://github.com/ProwlrBot/prowlrbot)
+Requires: `pip install -e "python/[dev]"` from [roar-protocol](https://github.com/ProwlrBot/roar-protocol)
 
 ```bash
 cd /path/to/roar-protocol

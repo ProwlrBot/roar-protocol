@@ -150,7 +150,7 @@ pip install -e './python[dev]'           # Testing + linting tools
 - [BUILD.md](BUILD.md) — Full build guide for all SDKs
 - [ROAR-SPEC.md](ROAR-SPEC.md) — Protocol specification
 - [SDK-ROADMAP.md](SDK-ROADMAP.md) — Feature status tracker
-- [ProwlrBot](https://github.com/ProwlrBot/prowlrbot) — Reference platform implementation
+- [roar-protocol](https://github.com/ProwlrBot/roar-protocol) — Protocol specification + SDK
 
 ---
 

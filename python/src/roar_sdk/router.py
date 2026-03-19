@@ -172,11 +172,18 @@ def create_roar_router(
                     content={"error": "verification_failed", "detail": result.error},
                 )
         else:
-            # Fallback to basic signing secret check
-            if server._signing_secret and not incoming.verify(server._signing_secret):
+            # Signature verification — fail-closed: if signing secret is configured,
+            # verification MUST pass. If no secret, reject with 401 (never skip).
+            if not server._signing_secret:
+                logger.warning("No signing secret configured — rejecting unsigned message %s", incoming.id)
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "no_signing_secret", "detail": "Server requires a signing secret to be configured."},
+                )
+            if not incoming.verify(server._signing_secret):
                 logger.warning("Signature verification failed for message %s", incoming.id)
                 return JSONResponse(
-                    status_code=403,
+                    status_code=401,
                     content={"error": "signature_invalid", "detail": "HMAC signature verification failed."},
                 )
 
@@ -196,6 +203,11 @@ def create_roar_router(
         If auth_token is configured, the first frame must be:
         ``{"type": "auth", "token": "<bearer-token>"}``
         """
+        # WebSocket auth — fail-closed: require auth_token or auth_config
+        if not auth_token and auth_config is None:
+            await ws.close(code=4001, reason="No authentication configured")
+            return
+
         await ws.accept()
 
         if auth_token:
@@ -224,7 +236,10 @@ def create_roar_router(
                 try:
                     incoming = ROARMessage.model_validate(json.loads(raw))
 
-                    if server._signing_secret and not incoming.verify(server._signing_secret):
+                    if not server._signing_secret:
+                        await ws.send_text(json.dumps({"error": "no_signing_secret"}))
+                        continue
+                    if not incoming.verify(server._signing_secret):
                         await ws.send_text(json.dumps({"error": "signature_invalid"}))
                         continue
 

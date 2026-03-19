@@ -67,7 +67,7 @@ We ask that you do not publicly disclose the vulnerability until we have release
 
 | Component | Supported versions |
 |-----------|--------------------|
-| Spec | 0.2.x (current) |
+| Spec | 0.3.x (current) |
 | Python SDK | 0.3.x (current) |
 | TypeScript SDK | 0.3.x (current) |
 

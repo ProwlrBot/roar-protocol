@@ -132,8 +132,12 @@ class ROARServer:
             return handler
         return decorator
 
-    async def handle_message(self, msg: ROARMessage) -> ROARMessage:
+    async def handle_message(self, msg: ROARMessage, *, _signature_verified: bool = False) -> ROARMessage:
         """Dispatch an incoming message to the registered handler.
+
+        If a ``signing_secret`` was configured, the message's HMAC signature is
+        verified before dispatch (unless the caller has already verified it and
+        passes ``_signature_verified=True``).
 
         If the message carries a delegation token in context["delegation_token"],
         it is verified and consumed (use_count incremented). Messages with an
@@ -141,6 +145,17 @@ class ROARServer:
 
         Returns an error response if no handler is registered.
         """
+        # SECURITY: verify message signature when a signing secret is configured
+        # and the caller has not already performed verification (e.g. serve()).
+        if self._signing_secret and not _signature_verified:
+            if not msg.verify(self._signing_secret, max_age_seconds=300):
+                return ROARMessage(
+                    **cast(Dict[str, Any], {"from": self._identity, "to": msg.from_identity}),
+                    intent=MessageIntent.RESPOND,
+                    payload={"error": "invalid_signature", "message": "Message signature verification failed."},
+                    context={"in_reply_to": msg.id},
+                )
+
         # Delegation token enforcement
         raw_token = msg.context.get("delegation_token")
         if raw_token:
@@ -364,12 +379,20 @@ class ROARServer:
                         status_code=409,
                     )
 
-            response = await server_ref.handle_message(msg)
+            response = await server_ref.handle_message(msg, _signature_verified=True)
             return response.model_dump(by_alias=True)
 
         @app.get("/roar/agents")
         async def list_agents():
             return {"agents": [server_ref.get_card().model_dump()]}
+
+        if not server_ref._signing_secret:
+            logger.warning(
+                "ROAR server '%s' starting WITHOUT signing_secret — "
+                "ALL messages will be accepted without authentication. "
+                "Set signing_secret to enable HMAC verification.",
+                self._identity.display_name,
+            )
 
         logger.info(
             "ROAR server '%s' starting on http://%s:%d",

@@ -153,6 +153,123 @@ Implementations **MUST** enforce all checks below before dispatching a message t
 - For HMAC, deployments **SHOULD** support key identifiers (`kid`) and overlap old/new keys during rotation; verifiers **MUST** reject unknown `kid` values.
 - Implementations **SHOULD** include the negotiated protocol/version in policy checks and **MUST** reject unknown major versions to prevent downgrade ambiguity.
 
+## Delegation Tokens (Normative)
+
+Delegation tokens allow an agent to act on behalf of another agent. A delegator issues a signed token granting specific capabilities to a delegate.
+
+### Token Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `token_id` | string | REQUIRED | Unique token ID (`tok_<10-hex-chars>`) |
+| `delegator_did` | string | REQUIRED | DID of the agent granting the delegation |
+| `delegate_did` | string | REQUIRED | DID of the agent receiving the delegation |
+| `capabilities` | string[] | REQUIRED | Capabilities granted; MUST be sorted lexicographically before signing |
+| `issued_at` | float | REQUIRED | Unix timestamp of issuance |
+| `expires_at` | float\|null | OPTIONAL | Unix timestamp of expiry; null means no expiry |
+| `max_uses` | int\|null | OPTIONAL | Maximum number of uses; null means unlimited |
+| `use_count` | int | Auto | Current usage count; excluded from signing body |
+| `can_redelegate` | bool | REQUIRED | Whether the delegate can further delegate |
+| `signature` | string | REQUIRED | `ed25519:<base64url-no-padding>` over canonical signing body |
+
+### Token Signing Body
+
+Implementations MUST compute the signing body as canonical JSON over these fields in alphabetical order:
+
+```json
+{
+  "can_redelegate": false,
+  "capabilities": ["ask", "execute"],
+  "delegate_did": "did:roar:agent:worker-...",
+  "delegator_did": "did:roar:agent:admin-...",
+  "expires_at": 1710086400.0,
+  "issued_at": 1710000000.0,
+  "max_uses": 10,
+  "token_id": "tok_a1b2c3d4e5"
+}
+```
+
+The `use_count` and `signature` fields MUST NOT be included in the signing body. The `capabilities` array MUST be sorted lexicographically before inclusion.
+
+Serialization MUST use the same canonical JSON rules as message signing: `sort_keys=True, separators=(", ", ": ")`.
+
+### Token Verification in Message Handling
+
+When a message arrives with `context.delegation_token`, implementations MUST perform these checks in order:
+
+1. **Parse**: Deserialize the token from `context["delegation_token"]`. If malformed, return error with HTTP 400.
+2. **Bind check**: `token.delegate_did` MUST equal `msg.from_identity.did`. If not, return `"delegation_token_unauthorized"` with HTTP 401.
+3. **Expiry check**: If `token.expires_at` is set and `time.now() > token.expires_at`, return `"delegation_token_exhausted"` with HTTP 401.
+4. **Use-count check**: Atomically increment `use_count`. If `token.max_uses` is set and `use_count > max_uses`, return `"delegation_token_exhausted"` with HTTP 401. Implementations MUST use atomic operations (e.g., Redis Lua script) to prevent race conditions.
+5. **Key resolution**: Resolve the delegator's Ed25519 public key from a trusted source (DID document, trusted directory). Implementations MUST NOT use any key supplied in the message body. If resolution fails, return `"delegation_unverifiable"` with HTTP 503.
+6. **Signature verification**: Verify the Ed25519 signature over the canonical signing body using the resolved public key. If verification fails, return `"invalid_delegation_signature"` with HTTP 401.
+
+Only after ALL checks pass SHOULD the message be dispatched to intent handlers.
+
+### Re-delegation
+
+If `can_redelegate` is `true`, the delegate MAY issue a new delegation token to a third party. The new token's capabilities MUST be a subset of the parent token's capabilities. If the parent token has `can_redelegate: false`, attempts to re-delegate MUST be rejected.
+
+---
+
+## Rate Limiting (Normative)
+
+Implementations SHOULD enforce rate limiting on message endpoints. When rate-limited, the server MUST return HTTP 429 Too Many Requests with:
+
+```json
+{
+  "error": "rate_limited",
+  "message": "Rate limit exceeded. Retry after {seconds}s."
+}
+```
+
+The response MUST include a `Retry-After` header with the number of seconds until the next request will be accepted.
+
+Implementations MAY include these headers on all responses:
+- `X-RateLimit-Limit-Minute` — maximum requests per minute
+- `X-RateLimit-Remaining-Minute` — remaining requests this minute
+
+---
+
+## Request Body Size Limits (Normative)
+
+Message endpoints MUST enforce a maximum request body size of **1 MiB**. Requests exceeding this limit MUST be rejected with HTTP 413 Payload Too Large.
+
+---
+
+## Replay Protection (Normative)
+
+Implementations MUST maintain a deduplication cache keyed by message `id`. Duplicate messages within the replay window MUST be rejected with HTTP 409 Conflict:
+
+```json
+{
+  "error": "duplicate_message",
+  "detail": "Message already processed."
+}
+```
+
+The cache MUST retain entries for at least 600 seconds. Implementations MAY use bounded LRU eviction (RECOMMENDED: 10,000 entries) to limit memory usage.
+
+---
+
+## Error Response Codes
+
+| Code | Error | When |
+|------|-------|------|
+| 400 | `invalid_message` | Malformed request body |
+| 400 | `verification_failed` | StrictMessageVerifier rejection |
+| 401 | `signature_invalid` | HMAC/Ed25519 verification failed |
+| 401 | `no_signing_secret` | Server has no signing secret configured (fail-closed) |
+| 401 | `delegation_token_unauthorized` | Delegate DID mismatch |
+| 401 | `delegation_token_exhausted` | Token expired or max uses reached |
+| 401 | `invalid_delegation_signature` | Token signature invalid |
+| 409 | `duplicate_message` | Replay detected |
+| 413 | `request_too_large` | Body exceeds size limit |
+| 429 | `rate_limited` | Too many requests |
+| 503 | `delegation_unverifiable` | Cannot resolve delegator key |
+
+---
+
 ## Protocol Adapters
 
 ### MCP ↔ ROAR

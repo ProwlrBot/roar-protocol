@@ -83,7 +83,7 @@ Milestones:
 - ⬜ ROAR Hub reference server (federation + discovery)
 - ⬜ Submit to GitHub open-source foundations for neutral hosting
 
-**Governance:** Single maintainer (ProwlrBot) with public RFC process via GitHub issues. All spec changes require a `spec_change.md` issue. No votes required — maintainer has final say in Year 1 to keep velocity.
+**Governance:** Single maintainer (@kdairatchi) with public RFC process via GitHub issues. All spec changes require a `spec_change.md` issue. No votes required — maintainer has final say in Year 1 to keep velocity.
 
 ### Year 2 (2026–2027): Standards Body Engagement
 

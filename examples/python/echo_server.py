@@ -7,7 +7,7 @@ Demonstrates Layer 1 (identity), Layer 4 (exchange), and Layer 2 (discovery regi
 Run this first, then run client.py in a second terminal.
 
 Requirements:
-    pip install -e ".[dev]"  (from the prowlrbot repo)
+    pip install -e "python/[dev]"  (from the roar-protocol repo)
     pip install uvicorn fastapi  (for the HTTP server)
 
 Usage:

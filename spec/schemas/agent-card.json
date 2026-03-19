@@ -95,6 +95,12 @@
       "description": "Arbitrary key-value metadata. Use for team, timezone, owner, or any deployment-specific properties not covered by other fields.",
       "additionalProperties": true,
       "examples": [{"team": "backend", "timezone": "America/New_York"}]
+    },
+    "attestation": {
+      "type": ["string", "null"],
+      "description": "Base64url-encoded Ed25519 signature over the canonical AgentCard JSON (excluding this field). Used for verifiable agent card registration. Null if the card is unsigned.",
+      "default": null,
+      "examples": ["eyJhbGciOiJFZDI1NTE5In0...", null]
     }
   },
   "additionalProperties": false,

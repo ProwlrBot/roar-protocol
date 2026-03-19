@@ -72,6 +72,7 @@ def _signing_body_ed25519(msg: "ROARMessage") -> bytes:
             "timestamp": msg.auth.get("timestamp", msg.timestamp),
         },
         sort_keys=True,
+        separators=(", ", ": "),
     )
     return body.encode("utf-8")
 

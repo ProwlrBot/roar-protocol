@@ -93,7 +93,7 @@ class Test3PartyDelegationResolved:
         )
 
         msg = make_msg(delegate_identity, server, token)
-        response = asyncio.get_event_loop().run_until_complete(server.handle_message(msg))
+        response = asyncio.new_event_loop().run_until_complete(server.handle_message(msg))
 
         # Should reach the handler and return ok
         assert response.payload.get("status") == "ok"
@@ -130,7 +130,7 @@ class Test3PartyDelegationResolutionFailure:
         monkeypatch.setattr(server_mod, "resolve_did_to_public_key", failing_resolver)
 
         msg = make_msg(delegate_identity, server, token)
-        response = asyncio.get_event_loop().run_until_complete(server.handle_message(msg))
+        response = asyncio.new_event_loop().run_until_complete(server.handle_message(msg))
 
         assert response.payload.get("error") == "delegation_unverifiable"
 
@@ -167,7 +167,7 @@ class Test3PartyDelegationInvalidSignature:
         )
 
         msg = make_msg(delegate_identity, server, token)
-        response = asyncio.get_event_loop().run_until_complete(server.handle_message(msg))
+        response = asyncio.new_event_loop().run_until_complete(server.handle_message(msg))
 
         assert response.payload.get("error") == "invalid_delegation_signature"
 
@@ -211,7 +211,7 @@ class TestBindCheckOrder:
 
         # Send the message AS the impostor (wrong sender DID)
         msg = make_msg(impostor_identity, server, token)
-        response = asyncio.get_event_loop().run_until_complete(server.handle_message(msg))
+        response = asyncio.new_event_loop().run_until_complete(server.handle_message(msg))
 
         # Bind check must have fired
         assert response.payload.get("error") == "delegation_token_unauthorized"
@@ -245,7 +245,7 @@ class TestBindCheckOrder:
         monkeypatch.setattr(server_mod, "resolve_did_to_public_key", tracking_resolver)
 
         msg = make_msg(delegate_identity, server, token)
-        asyncio.get_event_loop().run_until_complete(server.handle_message(msg))
+        asyncio.new_event_loop().run_until_complete(server.handle_message(msg))
 
         # Resolver was called because delegator != delegate (3-party)
         assert resolver_called == [delegator_identity.did]
@@ -281,7 +281,7 @@ class TestTokenStoreEnforcement:
             lambda did: delegator_pub,
         )
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         # Use 1 and 2 — both succeed
         msg1 = make_msg(delegate_identity, server, token)

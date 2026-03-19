@@ -236,7 +236,7 @@ DNS is inherently trust-on-first-use. Mitigations:
 ### Cache Poisoning
 
 - The in-memory TTL cache (5 minutes) limits the window for stale/poisoned data.
-- Production deployments SHOULD use a validating DNS resolver.
+- Production deployments MUST use a validating DNS resolver.
 
 ### Record Validation
 

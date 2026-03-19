@@ -6,6 +6,34 @@ Format: `[version] — date — description`
 
 ---
 
+## [Roadmap Completion Sprint] — 2026-03-19
+
+7 roadmap features implemented, quality gate passed (713 tests, 0 warnings).
+
+### New Features
+
+- **Go SDK Layer 5**: EventBus, StreamFilter, Subscription with Go channels + 12 tests (`go/streaming.go`)
+- **Rust SDK Layer 5**: EventBus, StreamFilter, Subscription with mpsc channels + 8 tests (`rust/src/streaming.rs`)
+- **gRPC Transport**: Protobuf schema (`spec/schemas/roar.proto`), Python transport/servicer with graceful fallback (`transports/grpc.py`)
+- **Benchmark Suite**: 10+ benchmarks measuring throughput, signing, serialization, discovery, replay detection with P50/P95/P99 + memory tracking (`benchmarks/benchmark_suite.py`)
+- **Security Pentest Suite**: 4 test modules (auth, injection, crypto, DoS) with 30+ attack-pattern tests (`tests/security/`)
+- **Tracing Dashboard**: Dedicated Grafana dashboard with 11 panels + 6 tracing panels added to overview (`deployment/grafana/dashboards/`)
+- **Browser SDK Examples**: 4 interactive HTML demos — identity signing, agent chat, hub discovery, stream events (`ts/browser/examples/`)
+
+### Fixes
+
+- Registered `@pytest.mark.slow` marker — eliminates PytestUnknownMarkWarning
+- Replaced deprecated `asyncio.get_event_loop()` with `asyncio.new_event_loop()` in 3-party delegation tests
+- Added root-level `pytest.ini` for marker registration when running from repo root
+
+### Roadmap
+
+- 27/32 features now implemented (84%) — up from 20/32 at start of sprint
+- Phase 1 (Security & Developer Experience): **completed**
+- Remaining: F25 (heartbeat), F28 (VCs), F29 (multi-hub HA), F30 (playground), F32 (commerce signing)
+
+---
+
 ## [Cross-Terminal Release] — 2026-03-17
 
 Coordinated release across all four engineering terminals.

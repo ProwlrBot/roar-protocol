@@ -10,12 +10,12 @@
     "stream": "0.3.0"
   },
   "compatibility": {
-    "prowlrbot": ">=0.1.0",
+    "roar_sdk": ">=0.3.2",
     "python_sdk_min_version": "0.3.2",
     "ts_sdk_min_version": "0.3.2",
     "mcp_bridge": true,
     "a2a_bridge": true,
-    "acp_bridge": false
+    "acp_bridge": true
   },
   "sdk_status": {
     "python": {

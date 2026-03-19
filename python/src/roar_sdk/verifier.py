@@ -33,20 +33,32 @@ class StrictMessageVerifier:
         self,
         *,
         hmac_secret: str = "",
+        hmac_secrets: Optional[dict[str, str]] = None,
         expected_recipient_did: Optional[str] = None,
         max_age_seconds: float = 300.0,
         max_future_skew_seconds: float = 30.0,
         replay_guard: Optional[IdempotencyGuard] = None,
         allowed_signature_schemes: Iterable[str] = ("hmac-sha256", "ed25519"),
+        trusted_ed25519_keys: Optional[dict[str, str]] = None,
     ) -> None:
         self._hmac_secret = hmac_secret
+        # kid-keyed HMAC secrets for key rotation: {"kid-1": "secret-1", "kid-2": "secret-2"}
+        self._hmac_secrets: dict[str, str] = hmac_secrets or {}
         self._expected_recipient_did = expected_recipient_did
         self._max_age = max_age_seconds
         self._max_future_skew = max_future_skew_seconds
         self._replay_guard = replay_guard
         self._allowed = set(allowed_signature_schemes)
+        # Maps DID -> public_key_hex for Ed25519 verification.
+        # Keys MUST come from a trusted source (DID Document, hub registry),
+        # NEVER from the message itself.
+        self._trusted_ed25519_keys = trusted_ed25519_keys or {}
 
     def verify(self, msg: ROARMessage) -> VerificationResult:
+        # Protocol version check — reject unknown major versions (fail-closed).
+        if not msg.roar or not msg.roar.startswith("1."):
+            return VerificationResult(False, "unsupported_protocol_version")
+
         signature = msg.auth.get("signature")
         if not isinstance(signature, str) or ":" not in signature:
             return VerificationResult(False, "missing_or_invalid_signature")
@@ -54,6 +66,15 @@ class StrictMessageVerifier:
         scheme, _ = signature.split(":", 1)
         if scheme not in self._allowed:
             return VerificationResult(False, "signature_scheme_not_allowed")
+
+        # kid (key identifier) check — if present, must match a known key.
+        kid = msg.auth.get("kid")
+        if kid is not None and isinstance(kid, str):
+            if scheme == "hmac-sha256" and self._hmac_secrets:
+                if kid not in self._hmac_secrets:
+                    return VerificationResult(False, "unknown_key_identifier")
+            elif scheme == "ed25519" and kid not in self._trusted_ed25519_keys:
+                return VerificationResult(False, "unknown_key_identifier")
 
         if self._expected_recipient_did and msg.to_identity.did != self._expected_recipient_did:
             return VerificationResult(False, "recipient_mismatch")
@@ -73,14 +94,27 @@ class StrictMessageVerifier:
             return VerificationResult(False, "replay_detected")
 
         if scheme == "hmac-sha256":
-            if not self._hmac_secret:
+            # Resolve the correct secret: kid-based lookup first, then fallback.
+            secret = self._hmac_secret
+            kid = msg.auth.get("kid")
+            if kid and self._hmac_secrets:
+                secret = self._hmac_secrets.get(kid, "")
+            if not secret:
                 return VerificationResult(False, "missing_hmac_secret")
-            if not msg.verify(self._hmac_secret, max_age_seconds=0):
+            if not msg.verify(secret, max_age_seconds=0):
                 return VerificationResult(False, "invalid_hmac_signature")
             return VerificationResult(True)
 
         if scheme == "ed25519":
-            if not verify_ed25519(msg, max_age_seconds=0):
+            # SECURITY: NEVER fall back to msg.from_identity.public_key —
+            # that field is attacker-controlled (spec 04-exchange.md line 152).
+            trusted_key = self._trusted_ed25519_keys.get(msg.from_identity.did)
+            if not trusted_key:
+                return VerificationResult(
+                    False,
+                    "ed25519_no_trusted_key: sender DID not in trusted_ed25519_keys",
+                )
+            if not verify_ed25519(msg, max_age_seconds=0, public_key_hex=trusted_key):
                 return VerificationResult(False, "invalid_ed25519_signature")
             return VerificationResult(True)
 

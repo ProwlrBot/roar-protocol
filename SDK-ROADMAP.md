@@ -117,7 +117,7 @@ Last updated: 2026-03-17 (cross-terminal release — Go/Rust server+hub, securit
 | `ROARHub` with REST API | ✅ | `hub.ts` |
 | Hub challenge-response registration | ✅ | `hub_auth.ts` |
 | Hub federation (sync + export) | ✅ | `hub.ts` |
-| DNS-based discovery (IETF BANDAID) | ✅ | `dns_discovery.py` |
+| DNS-based discovery (IETF BANDAID) | ✅ | `dns_discovery.ts` |
 
 ### Layer 3 — Connect
 
@@ -174,10 +174,9 @@ All checks must pass before claiming ROAR compliance.
 
 ## What's Still Ahead
 
-Both SDKs are feature-complete for the current spec. Remaining work is either spec extensions or transport additions:
+All four SDKs are feature-complete for the current spec (v0.3.0). All 32 roadmap features are implemented. Remaining work is spec extensions or transport additions:
 
-- **DNS-based discovery** — spec-level design work needed before implementation
-- **gRPC transport** — requires protobuf schema and streaming semantics definition
+- **gRPC transport** — protobuf schema exists (`spec/protobuf/roar.proto`); Python/TypeScript streaming semantics still needed
 - **QUIC/HTTP3 transport** — future
-- **Browser/WASM compatibility** — future
 - **AAIF submission** — register ROAR as a bridge protocol at the AAIF technical committee
+- **Federation per-card signing** — planned for v0.4 spec (see THREAT-MODEL.md §5.5)

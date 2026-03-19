@@ -66,9 +66,13 @@ class ChallengeStore:
         """Return and DELETE the challenge (prevents replay).
 
         Returns None if the challenge has expired or was never issued.
+        Defense-in-depth: also rejects if popped challenge is past expiry.
         """
         self._evict_expired()
-        return self._pending.pop(challenge_id, None)
+        challenge = self._pending.pop(challenge_id, None)
+        if challenge is not None and challenge.expires_at < time.time():
+            return None  # Expired between eviction and pop — reject
+        return challenge
 
     def _evict_expired(self) -> None:
         now = time.time()

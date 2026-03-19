@@ -16,7 +16,10 @@
         "monitor_alert",
         "agent_status",
         "checkpoint",
-        "world_update"
+        "world_update",
+        "stream_start",
+        "stream_end",
+        "agent_delegate"
       ],
       "description": "Event category. Determines the shape of `data`.",
       "examples": ["task_update"]
@@ -24,7 +27,7 @@
     "source": {
       "type": "string",
       "description": "DID of the agent that emitted this event. Always attributable.",
-      "pattern": "^did:roar:",
+      "pattern": "^did:",
       "examples": ["did:roar:agent:architect-a1b2c3d4e5f6a1b2"]
     },
     "session_id": {
