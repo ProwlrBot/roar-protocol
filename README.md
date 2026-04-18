@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/by-kdairatchi-00E5FF?style=for-the-badge&logoColor=white" alt="by kdairatchi" />
+  <img src="https://img.shields.io/badge/by-kdairatchi-06b6d4?style=for-the-badge&logoColor=white" alt="by kdairatchi" />
   &nbsp;
-  <img src="https://img.shields.io/badge/ProwlrBot-ROAR%20Protocol-00E5FF?style=for-the-badge&logoColor=white" alt="ROAR Protocol" />
+  <img src="https://img.shields.io/badge/ProwlrBot-ROAR%20Protocol-06b6d4?style=for-the-badge&logoColor=white" alt="ROAR Protocol" />
 </p>
 
 <h1 align="center">ROAR Protocol</h1>
@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ProwlrBot/prowlrbot"><img src="https://img.shields.io/badge/reference%20impl-prowlrbot-00E5FF?style=flat-square" /></a>
+  <a href="https://github.com/ProwlrBot/prowlrbot"><img src="https://img.shields.io/badge/reference%20impl-prowlrbot-06b6d4?style=flat-square" /></a>
   <a href="https://github.com/ProwlrBot/roar-protocol/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" /></a>
   <img src="https://img.shields.io/badge/spec-v0.3.0-orange?style=flat-square" />
   <img src="https://img.shields.io/badge/status-active-green?style=flat-square" />
