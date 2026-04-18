@@ -332,6 +332,10 @@ ROAR came out of building real multi-agent systems and getting frustrated with t
 
 The name felt right. Agents should be heard. The protocol should be invisible.
 
+## Security
+
+Report suspected vulnerabilities privately — see [SECURITY.md](SECURITY.md).
+
 ---
 
 <p align="center">
